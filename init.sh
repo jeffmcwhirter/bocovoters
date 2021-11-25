@@ -54,3 +54,28 @@ release_plugin() {
 	sh /Users/jeffmc/source/ramadda/bin/scpgeode.sh 50.112.99.202  $var plugins
    done
 }
+
+
+make_boulder_ballots() {
+    year="$1"
+    yy="$2"
+    ballots=ballots_sent_${year}.csv
+    precinct_histogram=${file_prefix_precinct}_${year}.csv    
+    echo "making $year boulder ballots"
+#	   -ifin precinct ${datadir}/boulder_precincts.csv  precinct \
+    ${csv} -cleaninput -dots ${dots} -delimiter "|"  \
+	   -c "precinct,split,yob,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE,RES_ADDRESS" \
+	   -concat precinct,split "." full_precinct \
+	   -ifin split ${datadir}/boulder_splits.csv  full_precinct \
+	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "," "voted_date" \
+	   -change voted_date "," "" \
+	   -change voted_date "-${yy}$" "-${year}" \
+	   -change voted_date "OCT" "10" \
+	   -change voted_date "NOV" "11" \
+	   -change voted_date "(..)-(..)-(....)" "\$3-\$2-\$1" \
+	   -change voted_date "(..)/(..)/(....)" "\$3-\$1-\$2" \
+	   -func age "${year}-_yob" \
+	   -insert "" voted 0 \
+	   -if -notpattern voted_date "" -setcol "" "" voted 1 -endif \
+	   -p  ${datadir}/ce-068-${year}.txt.zip > ${ballots}
+}    

@@ -17,26 +17,12 @@ do_histogram() {
     ballots=ballots_sent_${year}.csv
     age_histogram=${file_prefix_age}_${year}.csv
     precinct_histogram=${file_prefix_precinct}_${year}.csv    
+    if [ ! -f ballots_sent_${year}.csv ]
+    then
+	make_boulder_ballots $1 $2
+    fi
+    
     echo "making $year histogram"
-
-#	   -ifin precinct ${datadir}/boulder_precincts.csv  precinct \
-    ${csv} -cleaninput -dots ${dots} -delimiter "|"  \
-	   -c "precinct,split,yob,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" \
-	   -concat precinct,split "." full_precinct \
-	   -ifin split ${datadir}/boulder_splits.csv  full_precinct \
-	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "," "voted_date" \
-	   -change voted_date "," "" \
-	   -change voted_date "-${yy}$" "-${year}" \
-	   -change voted_date "OCT" "10" \
-	   -change voted_date "NOV" "11" \
-	   -change voted_date "(..)-(..)-(....)" "\$3-\$2-\$1" \
-	   -change voted_date "(..)/(..)/(....)" "\$3-\$1-\$2" \
-	   -func age "${year}-_yob" \
-	   -insert "" voted 0 \
-	   -if -notpattern voted_date "" -setcol "" "" voted 1 -endif \
-	   -p  ${datadir}/ce-068-${year}.txt.zip > ${ballots}
-
-
 
     ${csv} -cleaninput -dots ${dots} \
 	   -histogram age "${bins}"  "voted" "count,sum" \
@@ -143,13 +129,6 @@ do_all_precinct() {
     mv tmp.csv precinct_all.csv
     stage_local precinct_all.csv
 }
-
-
-
-
-do_all_age
-do_all_precinct
-exit
 
 
 
