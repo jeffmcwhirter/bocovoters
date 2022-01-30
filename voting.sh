@@ -2,10 +2,9 @@
 mydir=`dirname $0`
 source ${mydir}/init.sh
 bins="18,25,35,45,55,65,75"
-bins="18,19,20,21,22,23,24,25,35,45,55,65,75"
+#bins="18,19,20,21,22,23,24,25,35,45,55,65,75"
 #bins="18,19,20,21,30,50,70"
-
-bins="18-100:1"
+#bins="18-100:1"
 
 file_prefix_age=histogram_age
 file_prefix_precinct=histogram_precinct
@@ -17,14 +16,19 @@ do_histogram() {
     ballots=ballots_sent_${year}.csv
     age_histogram=${file_prefix_age}_${year}.csv
     precinct_histogram=${file_prefix_precinct}_${year}.csv    
-    if [ ! -f ballots_sent_${year}.csv ]
+    if [ ! -f ${ballots} ]
     then
+	echo "making ${ballots}"
 	make_boulder_ballots $1 $2
     fi
-    
-    echo "making $year histogram"
+
+    precincts=".*(833|834|835|880|876)\$" 
+    precincts=".*" 
+    echo "making $year histogram precints=${precincts}"
+
 
     ${csv} -cleaninput -dots ${dots} \
+	   -pattern precinct "${precincts}" \
 	   -histogram age "${bins}"  "voted" "count,sum" \
 	   -insert 0  year $year \
 	   -round voted_sum  \
@@ -36,6 +40,7 @@ do_histogram() {
 
 
     ${csv} -cleaninput -dots ${dots} \
+	   -pattern precinct "${precincts}" \
 	   -summary precinct voted  "" "count,sum" \
 	   -insert 0  year $year \
 	   -round voted_sum  \
@@ -45,10 +50,11 @@ do_histogram() {
 	   -decimals "turnout" 1 \
 	   -p ${ballots} > ${precinct_histogram}
 
-
     ${csv} -addheader "" -p ${age_histogram} > voting_age_ranges_${year}.csv
     stage_local voting_age_ranges_${year}.csv
 }
+
+
 
 
 do_turnout() {
