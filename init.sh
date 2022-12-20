@@ -1,31 +1,83 @@
 #!/bin/sh
+set -e
+
 export mydir=`dirname $0`
 export datadir=${mydir}/data
 export csv=~/bin/csv.sh 
-export scpgeode=/Users/jeffmc/source/ramadda/bin/scpgeode.sh
+export scpgeode=~/source/ramadda/bin/scpgeode.sh
 export staging=~/staging
 export dots=5000
-export voting_report_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-068_Voters_With_Ballots_List_Public.zip
-ex=4bC!Erlction!$
 
+boulder_voters=voters_boulder.csv
+voter_history=voter_history.csv
+unique_voter_history=voter_history_unique.csv
+precincts=${datadir}/boco_precincts.csv
+geocodio=${datadir}/voters_addresses_geocodio.csv.zip
+
+
+#fetch the Master_Voting_History_List_Part[1-N].txt from the url and copy them
+#into a source subdirectory from where you are running the voters.sh script
+export voter_history_url=https://bcelections.sharefile.com/home/shared/fo740e74-18fd-486c-8bc4-0794c4bbd2ff
+voter_history_p=4bC!Erlction!$
+
+new=bC!Erlction!$
+
+export voting_report_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-068_Voters_With_Ballots_List_Public.zip
+export voting_report_file=ce-068-2022.txt
+export voting_report=${datadir}/${voting_report_file}.zip
+
+
+export registered_voters_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-VR011B_EXTERNAL.zip
+export registered_voters_file=registered_voters_2022.txt
+export registered_voters=${datadir}/${registered_voters_file}.zip
+export splits_2021=${datadir}/boulder_splits_2021.csv
+export splits_2022=${datadir}/boulder_splits_2022.csv
+
+export splits=${splits_2022}
+
+#Old 2021 precincts
+#export registered_voters=${datadir}/ce-vr011b.txt.zip
+#export splits=${datadir}/boulder_splits_2021.csv
 
 mkdir -p ${staging}
-set -e
 
-fetch_voting_report() {
-    echo "fetching voter report"
-    wget  -O CE-068_Voters_With_Ballots_List_Public.zip ${voting_report_url}
-    mkdir -p tmp
-    cd tmp
-    jar -xvf ../CE-068_Voters_With_Ballots_List_Public.zip
-    mv CE-068* ce-068-2021.txt
-    jar -cvf ce-068-2021.txt.zip ce-068-2021.txt
-    mv ce-068-2021.txt.zip ${datadir}
-    cd ..
-    rm CE-068_Voters_With_Ballots_List_Public.zip
+seesv() {
+    ${csv} -Djava.awt.headless=true -cleaninput -dots  ${dots}  "$@"
 }
 
 
+fetch_voting_report() {
+    echo "fetching voter report"
+    wget  -q -O CE-068_Voters_With_Ballots_List_Public.zip ${voting_report_url}
+    mkdir -p tmp
+    cd tmp
+    jar -xvf ../CE-068_Voters_With_Ballots_List_Public.zip
+    ls CE-068*
+    mv CE-068* ${voting_report_file}
+    jar -cvMf ${voting_report_file}.zip ${voting_report_file}
+    mv ${voting_report_file}.zip ${datadir}
+    cd ..
+    rm CE-068_Voters_With_Ballots_List_Public.zip
+    echo "Updated: ${voting_report_file}"
+}
+
+
+fetch_registered_voters() {
+    echo "fetching registered voters"
+    wget  -O tmp.zip ${registered_voters_url}
+    mkdir -p tmp
+    cd tmp
+    jar -xvf ../tmp.zip
+    mv CE-VR011B_EXTERNAL* ${registered_voters_file}
+    jar -cvMf ${registered_voters_file}.zip ${registered_voters_file}
+    echo "Moving registered_voters.txt.zip to ${registered_voters}"
+    mv ${registered_voters_file}.zip "${registered_voters}"
+    cd ..
+    rm tmp.zip
+}
+
+#fetch_registered_voters
+#exit
 
 stage_local() {
     for var in "$@"
@@ -39,7 +91,7 @@ stage_ramadda() {
     for var in "$@"
     do
 	echo "Staging to ramadda: $var"
-	sh ${scpgeode} 50.112.99.202 $var staging
+	sh ${scpgeode} 50.112.99.202 $var /home/ec2-user/staging
 	echo "$var"
     done
 
@@ -51,31 +103,8 @@ release_plugin() {
     do
 	echo "Releasing plugin: $var"
 	cp $var ~/.ramadda/plugins/
-	sh /Users/jeffmc/source/ramadda/bin/scpgeode.sh 50.112.99.202  $var plugins
+	sh ~/source/ramadda/bin/scpgeode.sh 50.112.99.202  $var plugins
    done
 }
 
 
-make_boulder_ballots() {
-    year="$1"
-    yy="$2"
-    ballots=ballots_sent_${year}.csv
-    precinct_histogram=${file_prefix_precinct}_${year}.csv    
-    echo "making $year boulder ballots"
-#	   -ifin precinct ${datadir}/boulder_precincts.csv  precinct \
-    ${csv} -cleaninput -dots ${dots} -delimiter "|"  \
-	   -c "precinct,split,yob,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE,RES_ADDRESS" \
-	   -concat precinct,split "." full_precinct \
-	   -ifin split ${datadir}/boulder_splits.csv  full_precinct \
-	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "," "voted_date" \
-	   -change voted_date "," "" \
-	   -change voted_date "-${yy}$" "-${year}" \
-	   -change voted_date "OCT" "10" \
-	   -change voted_date "NOV" "11" \
-	   -change voted_date "(..)-(..)-(....)" "\$3-\$2-\$1" \
-	   -change voted_date "(..)/(..)/(....)" "\$3-\$1-\$2" \
-	   -func age "${year}-_yob" \
-	   -insert "" voted 0 \
-	   -if -notpattern voted_date "" -setcol "" "" voted 1 -endif \
-	   -p  ${datadir}/ce-068-${year}.txt.zip > ${ballots}
-}    

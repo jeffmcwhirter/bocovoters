@@ -9,7 +9,7 @@ do_fetch() {
 
 do_convert() {
     echo "converting old"
-    ${csv} -dots 100 -set Match 0 MatchAmount -set CommitteeNum 0 CommitteeNumber  \
+    ${csv} -set Match 0 MatchAmount -set CommitteeNum 0 CommitteeNumber  \
 	   -case city proper \
 	   -change city "^(Bouder|Booulder|Boudler|Bouilder|Boukder|Boul;der|Boulde|Boulder County|Boulder-Co|Bouldera|Bouldewr|Bouldewwr|Bouldr|Bouldwer|Bouler|Bouolder|Bouulder)$" Boulder \
 	   -change filingdate,amendeddate,transactiondate "(....)/(..)/(..).*" "\$1/\$2/\$3" \
@@ -28,7 +28,7 @@ do_convert() {
 	   -case  FromCandidate lower \
 	   -case  anonymous lower \
 	   -geocodeaddressdb street,city,state "" "" \
-	   -p  ${datadir}/2021_contributions.csv > newtmp.csv
+	   -p  ${datadir}/2022_contributions.csv > newtmp.csv
 }
 
 
@@ -60,6 +60,10 @@ do_contributions() {
 }
 
 
+#do_contributions newtmp.csv    contributions_new.csv
+#exit
+
+
 #do_fetch
 echo "converting"
 do_convert
@@ -82,6 +86,7 @@ official_filing.cansearch true   \
 election_year.cansearch true  election_year.canlist true   \
 full_name.islabel true committee.islabel true \
 full_name.cansearch true  full_name.canlist true   \
+contribution.numberFormat ##0.00 \
 contribution.cansearch true  contribution.canlist true   \
 contribution.dostats true \
 contribution_type.cansearch true  contribution_type.canlist true   \

@@ -2,89 +2,70 @@
 mydir=`dirname $0`
 source ${mydir}/init.sh
 
-#registered_voters=${datadir}/ce-vr011b.txt.zip
-registered_voters=${datadir}/ce-vr011d.txt.zip
-voting_report_2021=${datadir}/ce-068-2021.txt.zip
-source=voters_boulder.csv
-voter_history=voter_history.csv
-unique_voter_history=voter_history_unique.csv
-precincts=${datadir}/boco_precincts.csv
-splits=${datadir}/boulder_splits.csv
-geocodio=${datadir}/voters_addresses_geocodio.csv.zip
 
-
-do_all() {
-    init_files
-    do_demographics
-    do_prep
-    do_history
-    do_counts
-    do_joins
-    do_final
-    do_db
-    do_release
+init_voting_history() {
+    if [ ! -f "${voter_history}" ]
+    then
+	echo "making ${voter_history}"
+	cp source/Master_Voting_History_List_Part1.txt ${voter_history}
+	tail -n+2 source/Master_Voting_History_List_Part2.txt >> ${voter_history}
+	tail -n+2 source/Master_Voting_History_List_Part3.txt >> ${voter_history}
+	tail -n+2 source/Master_Voting_History_List_Part4.txt >> ${voter_history}    
+    fi
 }
 
-
-
-init_files() {
-#    fetch_voting_report
-    echo "making voter_history"
-#       cp source/Master_Voting_History_List_Part1.csv ${voter_history}
-#       tail -n+2 source/Master_Voting_History_List_Part2.csv >> ${voter_history}
-#       tail -n+2 source/Master_Voting_History_List_Part3.csv >> ${voter_history}
-    ${csv} -append 1  source/Master_Voting_History_List_Part1.csv source/Master_Voting_History_List_Part2.csv >> ${voter_history} source/Master_Voting_History_List_Part3.csv >> ${voter_history}               
-}
-
-#init_files
-#exit
 
 do_prep() {
-    echo "processing voting report"
-    ${csv}  -delimiter "|" 	-cleaninput  -dots ${dots}    -pattern RES_CITY BOULDER \
+    echo "processing voting report ${voting_report}"
+    seesv  -delimiter "|"  -pattern RES_CITY BOULDER \
+	   -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
+	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_2022 \
+	   -trim voted_in_2022 \
+	   -change voted_in_2022 "^$" false \
+	   -change voted_in_2022 ".*[0-9]+.*" true \
+	   -p ${voting_report}  > voted_in_2022.csv
+    seesv  -delimiter "|"   \
 	    -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
-	    -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_2021 \
-	    -trim voted_in_2021 \
-	    -change voted_in_2021 "^$" false \
-	    -change voted_in_2021 ".*[0-9]+.*" true \
-	    -p ${voting_report_2021}  > voted_in_2021.csv
-    ${csv}  -delimiter "|" 	-cleaninput 	 -dots ${dots}   \
-	    -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
-	    -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_2021 \
-	    -trim voted_in_2021 \
-	    -change voted_in_2021 "^$" false \
-	    -change voted_in_2021 ".*[0-9]+.*" true \
-	    -p ${voting_report_2021}  > all_voted_in_2021.csv
-
+	    -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_2022 \
+	    -trim voted_in_2022 \
+	    -change voted_in_2022 "^$" false \
+	    -change voted_in_2022 ".*[0-9]+.*" true \
+	    -p ${voting_report}  > all_voted_in_2022.csv
 
     echo "processing registered voters"
+#    seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  -pattern res_city BOULDER  -p ${registered_voters} > voters_base.csv
 
-#    ${csv}  -delimiter "|"  	-cleaninput  -dots ${dots}  -notcolumns "regex:(?i)BALLOT_.*"  -pattern res_city BOULDER  -p ${registered_voters} > voters_base.csv
-
-    ${csv}  -delimiter "|"  	-cleaninput  -dots ${dots}  -notcolumns "regex:(?i)BALLOT_.*"  -concat precinct,split "." precinct_split  \
+    echo "splits: ${splits} ${registered_voters}"
+    seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  -concat precinct,split "." precinct_split  \
 	    -ifin  split ${splits} precinct_split -notcolumns precinct_split -p ${registered_voters} > voters_base.csv        
 
-    ${csv} -if -pattern mail_addr1,mailing_country "^$" -copycolumns res_address mail_addr1  -endif\
+    echo "making ${boulder_voters}"
+    seesv -if -pattern mail_addr1,mailing_country "^$" -copycolumns res_address mail_addr1  -endif\
 	   -if -pattern mailing_city,mailing_country "^$" -copycolumns res_city mailing_city  -endif \
 	   -if -pattern mailing_state,mailing_country "^$" -copycolumns res_state mailing_state  -endif\
 	   -if -pattern mailing_zip,mailing_country "^$" -copycolumns res_zip_code mailing_zip  -endif\
-	   -p voters_base.csv > ${source}
-    ${csv} -columns res_address,res_city -change res_address " APT .*" "" -change res_address " UNIT .*" "" -trim res_address -unique res_address -insert "" state Colorado  -set 0 0 address -set 1 0 city 	-cleaninput -dots ${dots} -p ${source} > voters_addresses.csv
-    ${csv} -sample 0.01  -p voters_addresses.csv > voters_addresses_short.csv        
+	   -p voters_base.csv > ${boulder_voters}
+
+    echo "making addresses"
+    seesv -columns res_address,res_city -change res_address " APT .*" "" -change res_address " UNIT .*" "" -trim res_address -unique res_address "" -insert "" state Colorado  -set 0 0 address -set 1 0 city -p ${boulder_voters} > voters_addresses.csv
+#    echo "making addresses short"
+#    seesv -sample 0.01  -p voters_addresses.csv > voters_addresses_short.csv        
 #    rm voters_base.csv
 }
+
 
 #do_prep
 #exit
 
+
 do_precincts() {
-    ${csv} -join precinct_name active_voters ${datadir}/precincts_voters.csv precinct 0   \
+    seesv -join precinct_name active_voters ${datadir}/precincts_voters.csv precinct 0   \
 	   -join precinct city ${datadir}/precincts_city.csv precinct ""   \
 	   -columnsafter  neighborhood city \
 	   -columnsafter  city active_voters \
 	   -concat "latitude,longitude" ";" Location -notcolumns latitude,longitude \
 	   -p ${precincts}> precincts_final.csv
-    ${csv} -db "precinct.type string neighborhood.type enumeration city.type enumeration location.type latlon \
+    seesv -db "precinct.type string neighborhood.type enumeration city.type enumeration location.type latlon \
     table.icon /icons/map/marker-blue.png \
     table.defaultView map \
     table.mapLabelTemplate _quote_\${precinct} - \${neighborhood}_quote_ \
@@ -96,42 +77,36 @@ do_precincts() {
 " precincts_final.csv > precinctsdb.xml
 }
 
-#do_precincts
-#exit
-
 
 
 do_history() {
    echo "making unique voting history"
-   ${csv} -cleaninput -dots ${dots} -ifin voter_id voters_boulder.csv  voter_id -p voter_history.csv  > voter_history_boulder.csv
-   ${csv} -cleaninput -dots ${dots} -unique  "voter_id,election_date" -p voter_history_boulder.csv > ${unique_voter_history}
-   echo "making off year"
-   ${csv} -cleaninput -dots ${dots} -pattern election_date "(11/../2001|11/../2003|11/../2005|11/../2007|11/../2009|11/../2011|11/../2013|11/../2015|11/../2017|11/../2019)" -p ${unique_voter_history} > history_offyears10.csv
-   ${csv}  -cleaninput -dots ${dots} -pattern election_date "(11/../2020)" -p ${unique_voter_history} > history_2020.csv
-   ${csv}  -cleaninput -dots  ${dots} -pattern election_date "(11/../2019)" -p ${unique_voter_history} > history_2019.csv      
-   ${csv}  -cleaninput -dots  ${dots} -pattern election_date "(11/../2015|11/../2017|11/../2019)" -p ${unique_voter_history} > history_offyears3.csv   
+   seesv -ifin voter_id ${boulder_voters}  voter_id -p ${voter_history}  > tmp.csv
+   seesv -unique  "voter_id,election_date" "" -p tmp.csv > ${unique_voter_history}
+   seesv  -pattern election_date "(11/../2021)" -p ${unique_voter_history} > history_2021.csv         
+   seesv  -pattern election_date "(11/../2020)" -p ${unique_voter_history} > history_2020.csv
+   seesv  -pattern election_date "(11/../2019)" -p ${unique_voter_history} > history_2019.csv
+   seesv  -pattern election_date "(11/../2018)" -p ${unique_voter_history} > history_2018.csv   
+   seesv  -pattern election_date "(11/../2017|11/../2019|11/../2021)" -p ${unique_voter_history} > history_offyears3.csv   
+   seesv -pattern election_date "(11/../2001|11/../2003|11/../2005|11/../2007|11/../2009|11/../2011|11/../2013|11/../2015|11/../2017|11/../2019|11/../2021)" -p ${unique_voter_history} > history_offyears10.csv
+}
+
+do_counts() {
+    echo "making voter counts"
+    cols=VOTER_ID,count
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2021" -change voted_in_2021 1 true -p history_2021.csv >count_2021.csv
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2020" -change voted_in_2020 1 true -p history_2020.csv >count_2020.csv
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2019" -change voted_in_2019 1 true -p history_2019.csv >count_2019.csv
+
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Last 3 offyear elections" -p history_offyears3.csv   >count_offyears3.csv
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Last 10 offyear elections" -p history_offyears10.csv   >count_offyears10.csv
+    echo "making all count"
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "All elections" -p ${unique_voter_history}  >count_all.csv
+    echo "making primary count"
+    seesv -pattern election_type Primary  -countunique voter_id -columns ${cols} -set 1 0 "Primary elections"  -p ${unique_voter_history} >count_primary.csv
 }
 
 #do_history
-#exit
-
-do_counts() {
-    echo "making off year count"
-    cols=VOTER_ID,count
-    ${csv} -cleaninput -dots  ${dots}  -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2020" -p history_2020.csv   >tmp.csv
-    ${csv}  -cleaninput -dots  ${dots} -change voted_in_2020 1 true  -p tmp.csv   >count_2020.csv
-    ${csv}  -cleaninput -dots  ${dots} -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2019" -p history_2019.csv   >tmp.csv
-    ${csv}  -cleaninput -dots  ${dots} -change voted_in_2019 1 true  -p tmp.csv   >count_2019.csv    
-    ${csv}  -cleaninput -dots  ${dots} -countunique voter_id -columns ${cols} -set 1 0 "Last 3 offyear elections" -p history_offyears3.csv   >count_offyears3.csv
-    ${csv}  -cleaninput -dots  ${dots} -countunique voter_id -columns ${cols} -set 1 0 "Last 10 offyear elections" -p history_offyears10.csv   >count_offyears10.csv
-    echo "making all count"
-    ${csv} -cleaninput -dots   ${dots} -countunique voter_id -columns ${cols} -set 1 0 "All elections" -p ${unique_voter_history}  >count_all.csv
-#    echo "making municipal count"
-#    ${csv} -pattern election_type Municipal  -countunique voter_id -columns ${cols} -set 1 0 "Municipal elections"  -p ${unique_voter_history}  >count_municipal.csv
-    echo "making primary count"
-    ${csv} -cleaninput -dots ${dots} -pattern election_type Primary  -countunique voter_id -columns ${cols} -set 1 0 "Primary elections"  -p ${unique_voter_history} >count_primary.csv
-}
-
 #do_counts
 #exit
 
@@ -140,12 +115,11 @@ do_demographics() {
     echo "cleaning up the demographics"
 #	-rand latitude 39.983 40.042  -rand longitude -105.303 -105.216 \
 #	-notcolumns latitude,longitude \
-    ${csv}  -cleaninput -dots ${dots} \
-	-notcolumns "regex:(?i).*veteran.*" \
-	-between latitude 39.955 40.1 \
-	-between longitude -105.3777 -105.155 \
-	-concat "latitude,longitude" ";" Location -notcolumns latitude,longitude \
-    -columns "address,location,\
+    seesv -notcolumns "regex:(?i).*veteran.*" \
+	  -between latitude 39.955 40.1 \
+	  -between longitude -105.3777 -105.155 \
+	  -concat "latitude,longitude" ";" Location -notcolumns latitude,longitude \
+	  -columns "address,location,\
 ACS Demographics/Median age/Total/Value, \
 ACS Economics/Number of households/Total/Value, \
 ACS Economics/Median household income/Total/Value, \
@@ -282,68 +256,65 @@ ACS Housing/Value of owner_occupied housing units/\$2_000_000 or more/Percentage
 }
 
 
-#do_demographics
-#exit
-
 
 do_joins() {
     echo "doing joins"
-    infile=${source}
+    infile=${boulder_voters}
     cp ${infile} working.csv
-    ${csv} -join precinct_name precinct_turnout_2019 ${datadir}/precincts_turnout.csv precinct 0 -p working.csv > tmp.csv
+    seesv -join precinct_name precinct_turnout_2019 ${datadir}/precincts_turnout.csv precinct 0 -p working.csv > tmp.csv
     mv tmp.csv working.csv
-    ${csv} -join 0 voted_in_2021 voted_in_2021.csv voter_id false    -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 voted_in_2022 voted_in_2022.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv
-    ${csv} -join 0 1 count_2020.csv voter_id false    -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1 count_2021.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv
-    ${csv} -join 0 1 count_2019.csv voter_id false    -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1 count_2020.csv voter_id false        -p working.csv > tmp.csv
+    mv tmp.csv working.csv
+    seesv -join 0 1 count_2019.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv    
-    ${csv} -join 0 1 count_offyears3.csv voter_id 0    -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1 count_offyears3.csv voter_id 0        -p working.csv > tmp.csv
     mv tmp.csv working.csv
-    ${csv} -join 0 1 count_offyears10.csv voter_id 0    -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1 count_offyears10.csv voter_id 0        -p working.csv > tmp.csv
     mv tmp.csv working.csv
-    ${csv} -join 0 1  count_all.csv voter_id 0    -cleaninput  -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1  count_all.csv voter_id 0          -p working.csv > tmp.csv
     mv tmp.csv working.csv
-    ${csv} -join 0 1 count_primary.csv voter_id 0   -cleaninput   -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1 count_primary.csv voter_id 0          -p working.csv > tmp.csv
     mv tmp.csv working.csv    
-#    ${csv} -join 0 1 count_municipal.csv voter_id 0   -cleaninput   -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+#    seesv -join 0 1 count_municipal.csv voter_id 0          -p working.csv > tmp.csv
 #    mv tmp.csv working.csv
 #join the precincts
-    ${csv} -join 0 1 ${precincts} precinct  ""  -cleaninput   -cleaninput -dots  ${dots} -p working.csv > tmp.csv
+    seesv -join 0 1 ${precincts} precinct  ""         -p working.csv > tmp.csv
     mv tmp.csv working.csv
 #join the  demographics
 
 #create a new column and remove the UNIT and APT suffix to do the join with the geocoded addresses
-    ${csv} -copy res_address res_address_trim -change res_address_trim " APT .*" "" -change res_address_trim " UNIT .*" "" -p working.csv > tmp.csv
+    seesv -copy res_address res_address_trim -change res_address_trim " APT .*" "" -change res_address_trim " UNIT .*" "" -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
     do_join_demographics working.csv tmp.csv
     mv tmp.csv working.csv
 
 ##Delete the temp address
-    ${csv} -notcolumns res_address_trim -p working.csv > tmp.csv
+    seesv -notcolumns res_address_trim -p working.csv > tmp.csv
 
     mv tmp.csv voters_joined.csv
     rm working.csv
 }
 
 
-
-
-
 do_join_demographics() {
     echo "doing demographics join"
-    ${csv} -cleaninput -dots ${dots} -join address "*" voters_geocode_trim.csv res_address_trim "0"    -p $1 > $2
+    seesv    -join address ".*" voters_geocode_trim.csv res_address_trim "0"    -p $1 > $2
 }
 
 #do_joins
 #exit
 
 
+
 do_final() {
     echo "making final"
-    ${csv}  \
-	    -notcolumns MUNICIPALITY,city_ward,county,preference,uocava,uocava_type,issue_method,split \
+    seesv  \
+	    -notcolumns county,preference,uocava,uocava_type,issue_method,split \
 	    -set county_regn_date 0 registration_date  \
 	    -set vr_phone 0 phone -set voter_name 0 name  -set yob 0 birth_year \
 	    -ranges birth_year "Birth year range" 1930 10 \
@@ -365,64 +336,41 @@ do_final() {
 #do_final
 #exit
 
-
 do_db() {
     echo "making db"
-    ${csv} -db "table.id boco_voters table.name {Boulder County Voters}  \
-    table.icon /db/user.png \
-    table.showEntryCreate false \
-    table.format  MM/dd/yyyy table.defaultOrder {full_street_name,asc;address_even;address,asc} \
-    table.showDateView false table.showChartView false table.showFeedView false \
-    table.formjs file:${mydir}/formjs.js \
-table.cansearch false table.searchForLabel {Basic Voter Properties} \
-table.mapLabelTemplate _quote_\${name}_quote_ \
-table.mapLabelTemplatePrint _quote_<div style='display: flex;  justify-content: space-between;margin-right:5px;'><span>\${name}</span><span>\${address}</span></div>_quote_ \
-table.addressTemplate _quote_\${name}<br>\${address}<br>\${city} \${state}<br>\${zip_code}_quote_ table.canlist false   \
-voter_id.type string \
-address_even.cansort true status.canlist true city.canlist true mailing_country.help {Enter &quot;_blank_&quot; to search for empty country} mailing_country.cansearch true mailing_country.addnot true \
-name.canlist true birth_year.canlist true gender.canlist true  \
-party.canlist true  status.canlist true  \
-address.addnot true address.addfiletosearch true address.canlist true  phone.canlist true \
-mail_addr1.cansearch true mail_addr1.addnot true mail_addr1.addfiletosearch true \
-registration_date.cansearch true  neighborhood.cansearch true  city.cansearch true name.cansearch true  \
-birth_year_range.cansearch true birth_year_range.type enumeration \
-birth_year.cansearch true  yob.cansearch true gender.cansearch true party.cansearch true status.cansearch true status_reason.cansearch true precinct.addnot true precinct.cansearch true  precinct.addfiletosearch true \
-precinct_turnout_2019.cansearch true address.cansearch true \
-party.values {REP:Republican,UAF:Unaffiliated,DEM:Democrat,GRN:Green,LBR:Labor,ACN:American Constitution Party,UNI:Unity,APV:Approval Voting} \
-precinct_turnout_2019.placeholder {0-100} \
-voted_in_2021.type enumeration voted_in_2021.cansearch true  voted_in_2021.group {Voting History} voted_in_2021.suffix {Not working until 3 weeks before the election} \
-voted_in_2020.type enumeration voted_in_2020.cansearch true  \
-voted_in_2019.type enumeration voted_in_2019.cansearch true  \
-.*elections.cansearch true  .*elections.type int \
-last_3_offyear_elections.suffix {# Times Voted in last 3 off year elections}\
-last_10_offyear_elections.suffix {# Times Voted in last 10 off year elections}\
- phone.type string house_number.type string unit_number.type string zip_code.type string zip_plus.type string  \
-full_street_name.cansearch true \
-eff_date.type date polparty_aff_date.type date registration_date.type date \
-status.type enumeration neighborhood.type enumeration neighborhood.numberOfSearchWidgets 3 status_reason.type enumeration \
-precinct.placeholder {One or more precinct ids} \
-precinct.lookupdb precincts:precinct precinct.type list party.type enumeration party.numberOfSearchWidgets 3 \
-gender.type enumeration preference.type enumeration city.type enumeration city.numberOfSearchWidgets 3 mailing_city.type enumeration zip_code.type enumeration  mailing_zip.type enumeration  birth_year.type int \
-location.type latlon location.cansearch true  \
-age_under_18.placeholder {0-100} age_18_to_30.placeholder {0-100} age_30_to_60.placeholder {0-100} age_60_plus.placeholder {0-100} income_less_than_10000.placeholder {0-100} income_10000_to_30000.placeholder {0-100} income_30000_to_100000.placeholder {0-100} income_100000_plus.placeholder {0-100} percent_hispanic.placeholder {0-100} median_age.placeholder {0-100} percent_family_household.placeholder {0-100} percent_non_family_household.placeholder {0-100} percent_owner_occupied.placeholder {0-100} percent_renter_occupied.placeholder {0-100} house_value_to_500000.placeholder {0-100} house_value_500000_to_1_million.placeholder {0-100} house_value_greater_1_million.placeholder {0-100} \
-age_under_18.group {Demographics} age_under_18.help {Specify ranges for percent households: 0-100} \
-age_under_18.cansearch true  age_18_to_30.cansearch true  age_30_to_60.cansearch true   \
-age_60_plus.cansearch true  income_less_than_10000.cansearch true  income_10000_to_30000.cansearch true  income_30000_to_100000.cansearch true  \
-income_100000_plus.cansearch true  percent_hispanic.cansearch true  median_age.cansearch true  percent_family_household.cansearch true  \
-percent_non_family_household.cansearch true  percent_owner_occupied.cansearch true  percent_renter_occupied.cansearch true  percent_house_value_to_500000.cansearch true  \
-percent_house_value_500000_to_1_million.cansearch true  percent_house_value_greater_1_million.cansearch true"  \
-voters_final.csv > bocovotersdb.xml
+    seesv -db "file:${mydir}/db.properties" voters_final.csv > bocovotersdb.xml
  }
+
 
 
 do_release() {
     release_plugin bocovotersdb.xml 
     stage_ramadda  voters_final.csv 
-
 }
 
 #do_db
-#do_release
+#release_plugin bocovotersdb.xml 
 #exit
+
+
+do_all() {
+    init_voting_history
+    fetch_voting_report
+#    fetch_registered_voters
+    do_demographics
+    echo "**** do_prep"
+    do_prep
+    echo "**** do_history"
+    do_history
+    echo "**** do_counts"
+    do_counts
+    echo "**** do_joins"
+    do_joins
+    echo "**** do_final"
+    do_final
+    do_db
+    do_release
+}
+
 
 do_all

@@ -2,15 +2,12 @@
 mydir=`dirname $0`
 source ${mydir}/init.sh
 
-source=${datadir}/electionExpenditures.csv
+source=${datadir}/2022_expenditures.csv
 
 #${csv} -c full_name -u 0 -p expenditures_final.csv | sort -u > names.csv
 #exit
 
-
-
-
-wget -O ${source} --post-data="exportType=Expenditure&electionID=20&committeeID=-1&filingDateStart=&filingDateStop=&transactionDateStart=&transactionDateStop=" https://election.bouldercolorado.gov/electionExpenditures.php 
+#wget -O ${source} --post-data="exportType=Expenditure&electionID=20&committeeID=-1&filingDateStart=&filingDateStop=&transactionDateStart=&transactionDateStop=" https://election.bouldercolorado.gov/electionExpenditures.php 
 
 
 ${csv} -columns "committee,type,candidate,filingdate,amendeddate,officialfiling,transactiondate,lastname,firstname,street,city,state,zip,expenditure,purpose" \
@@ -40,9 +37,10 @@ street.cansearch true  street.canlist true   \
 city.type {enumeration}  city.cansearch true  city.canlist true   \
 state.type {enumeration}  state.cansearch true  state.canlist true   \
 zip.type {string} \
+expenditure.numberFormat ##0.00 \
 expenditure.unit \$  expenditure.canlist true   \
 expenditure.cansearch true  expenditure.canlist true   \
-purpose.canlist true   \
+purpose.changetype true purpose.size 500 purpose.canlist true   \
 purpose.cansearch true  purpose.canlist true   \
 " \
        expenditures_final.csv > boulder_campaign_expendituresdb.xml
