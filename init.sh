@@ -42,7 +42,7 @@ export splits=${splits_2022}
 mkdir -p ${staging}
 
 seesv() {
-    ${csv} -Djava.awt.headless=true -cleaninput -dots  ${dots}  "$@"
+    ${csv}  -cleaninput -dots  ${dots}  "$@"
 }
 
 
