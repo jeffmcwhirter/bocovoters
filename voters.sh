@@ -261,24 +261,36 @@ do_joins() {
     echo "doing joins"
     infile=${boulder_voters}
     cp ${infile} working.csv
+
     seesv -join precinct_name precinct_turnout_2019 ${datadir}/precincts_turnout.csv precinct 0 -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 voted_in_2022 voted_in_2022.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 1 count_2021.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 1 count_2020.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 1 count_2019.csv voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv    
+
     seesv -join 0 1 count_offyears3.csv voter_id 0        -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 1 count_offyears10.csv voter_id 0        -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 1  count_all.csv voter_id 0          -p working.csv > tmp.csv
     mv tmp.csv working.csv
+
     seesv -join 0 1 count_primary.csv voter_id 0          -p working.csv > tmp.csv
     mv tmp.csv working.csv    
+
+
+
 #    seesv -join 0 1 count_municipal.csv voter_id 0          -p working.csv > tmp.csv
 #    mv tmp.csv working.csv
 #join the precincts
@@ -290,8 +302,10 @@ do_joins() {
     seesv -copy res_address res_address_trim -change res_address_trim " APT .*" "" -change res_address_trim " UNIT .*" "" -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
+
     do_join_demographics working.csv tmp.csv
     mv tmp.csv working.csv
+
 
 ##Delete the temp address
     seesv -notcolumns res_address_trim -p working.csv > tmp.csv
@@ -301,9 +315,11 @@ do_joins() {
 }
 
 
+
+
 do_join_demographics() {
     echo "doing demographics join"
-    seesv    -join address ".*" voters_geocode_trim.csv res_address_trim "0"    -p $1 > $2
+    seesv    -join address ".*" voters_geocode_trim.csv res_address_trim "0"    -notcolumns address -p $1 > $2
 }
 
 #do_joins
