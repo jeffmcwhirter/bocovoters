@@ -3,6 +3,7 @@ set -e
 
 export mydir=`dirname $0`
 export datadir=${mydir}/data
+export splitsdir=${mydir}/splits
 export csv=~/bin/csv.sh 
 export scpgeode=~/source/ramadda/bin/scpgeode.sh
 export staging=~/staging
@@ -30,9 +31,8 @@ export voting_report=${datadir}/${voting_report_file}.zip
 export registered_voters_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-VR011B_EXTERNAL.zip
 export registered_voters_file=registered_voters_2022.txt
 export registered_voters=${datadir}/${registered_voters_file}.zip
-export splits_2021=${datadir}/boulder_splits_2021.csv
-export splits_2022=${datadir}/boulder_splits_2022.csv
-
+export splits_2021=${splitsdir}/boulder_splits_2021.csv
+export splits_2022=${splitsdir}/boulder_splits_2022.csv
 export splits=${splits_2022}
 
 #Old 2021 precincts
