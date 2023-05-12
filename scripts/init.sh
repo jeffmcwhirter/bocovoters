@@ -7,11 +7,14 @@ export csv=~/bin/csv.sh
 export scpgeode=~/source/ramadda/bin/scpgeode.sh
 
 export tmpdir=tmp
-mkdir -p ${tmpdir}
 export datadir=${BOCO}/data
 export splitsdir=${BOCO}/splits
 export staging=~/staging
 export dots=5000
+
+mkdir -p ${tmpdir}
+mkdir -p ${staging}
+
 
 boulder_voters=voters_boulder.csv
 voter_history=${tmpdir}/voter_history.csv
@@ -23,9 +26,8 @@ geocodio=${datadir}/voters_addresses_geocodio.csv.zip
 #fetch the Master_Voting_History_List_Part[1-N].txt from the url and copy them
 #into a source subdirectory from where you are running the voters.sh script
 export voter_history_url=https://bcelections.sharefile.com/home/shared/fo740e74-18fd-486c-8bc4-0794c4bbd2ff
-voter_history_p=4bC!Erlction!$
-
-new=bC!Erlction!$
+voter_history_p="4bC!Erlction!$"
+new="bC!Erlction!$"
 
 export voting_report_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-068_Voters_With_Ballots_List_Public.zip
 export voting_report_file=ce-068-2022.txt
@@ -33,17 +35,15 @@ export voting_report=${datadir}/${voting_report_file}.zip
 
 
 export registered_voters_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-VR011B_EXTERNAL.zip
-export registered_voters_file=registered_voters_2022.txt
+export registered_voters_file=registered_voters.txt
 export registered_voters=${datadir}/${registered_voters_file}.zip
+
 export splits_2021=${splitsdir}/boulder_splits_2021.csv
 export splits_2022=${splitsdir}/boulder_splits_2022.csv
 export splits=${splits_2022}
 
-#Old 2021 precincts
-#export registered_voters=${datadir}/ce-vr011b.txt.zip
-#export splits=${datadir}/boulder_splits_2021.csv
 
-mkdir -p ${staging}
+
 
 seesv() {
     ${csv}  -cleaninput -dots  ${dots}  "$@"
@@ -66,16 +66,19 @@ fetch_voting_report() {
 
 
 fetch_registered_voters() {
-    echo "fetching registered voters"
-    wget  -O tmp.zip ${registered_voters_url}
-    cd ${tmpdir}
-    jar -xvf ../tmp.zip
-    mv CE-VR011B_EXTERNAL* ${registered_voters_file}
-    jar -cvMf ${registered_voters_file}.zip ${registered_voters_file}
-    echo "Moving registered_voters.txt.zip to ${registered_voters}"
-    cd ..
-    mv ${registered_voters_file}.zip "${registered_voters}"
-    rm tmp.zip
+    if [ ! -f "${tmpdir}/${registered_voters_file}" ]
+    then
+	echo "fetching registered voters"
+	wget  -O tmp.zip ${registered_voters_url}
+	cd ${tmpdir}
+	jar -xvf ../tmp.zip
+	mv CE-VR011B_EXTERNAL* ${registered_voters_file}
+	jar -cvMf ${registered_voters_file}.zip ${registered_voters_file}
+	echo "Moving registered_voters.txt.zip to ${registered_voters}"
+	mv "${registered_voters_file}.zip" "${registered_voters}"
+	cd ..
+	rm tmp.zip
+    fi
 }
 
 #fetch_registered_voters
