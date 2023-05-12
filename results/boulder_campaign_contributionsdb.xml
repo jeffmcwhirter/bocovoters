@@ -1,0 +1,41 @@
+<tables>
+<table  id="boulder_campaign_contributions"  name="Boulder Campaign Contributions"  showEntryCreate="false" >
+<addressTemplate><![CDATA[${first_name} ${last_name}<br>${street}<br>${city} ${state}<br>${zip}]]></addressTemplate>
+<macro name="But not donations that..." column="full_name" 
+columns="election_year:Donation in year,candidate:Donation to,committee:Donation to committee">
+<description>
+<![CDATA[
+<center>
+<div class="ramadda-note">Don't select donations that match this criteria</div>
+</center>
+]]>
+</description>
+
+</macro>
+
+<column  name="committee"  numberOfSearchWidgets="4"  type="enumeration"  label="Committee"  cansearch="true"  canlist="true" ><property  name="islabel"  value="true" /></column>
+
+<column  name="type"  type="enumeration"  label="Type"  cansearch="true"  canlist="true" />
+<column  name="candidate"  numberOfSearchWidgets="4"  type="enumeration"  label="Candidate"  cansearch="true"  canlist="true" />
+<column  name="filing_date"  type="date"  label="Filing Date"  cansearch="true"  canlist="true"  format="yyyy/MM/dd" />
+<column  name="amended_date"  type="date"  label="Amended Date"  cansearch="false"  canlist="false"  format="yyyy/MM/dd" />
+<column  name="official_filing"  type="enumeration"  label="Official Filing"  cansearch="true"  canlist="false" />
+<column  name="transaction_date"  type="date"  label="Transaction Date"  cansearch="false"  canlist="false"  format="yyyy/MM/dd" />
+<column  name="election_year"  type="enumeration"  label="Election Year"  cansearch="true"  canlist="true" />
+<column  name="full_name"  type="string"  label="Full Name"  cansearch="true"  canlist="true" ><property  name="islabel"  value="true" /></column>
+
+<column  name="last_name"  type="string"  label="Last Name"  cansearch="false"  canlist="false" />
+<column  name="first_name"  type="string"  label="First Name"  cansearch="false"  canlist="false" />
+<column  name="street"  type="string"  label="Street"  cansearch="false"  canlist="true" />
+<column  name="city"  addnot="true"  type="enumeration"  label="City"  cansearch="true"  canlist="true" />
+<column  name="state"  addnot="true"  type="enumeration"  label="State"  cansearch="true"  canlist="false" />
+<column  name="zip"  type="string"  label="Zip"  cansearch="false"  canlist="false" />
+<column  name="contribution"  type="double"  label="Contribution"  cansearch="true"  canlist="true"  numberFormat="##0.00"  dostats="true" />
+<column  name="contribution_type"  type="enumeration"  label="Contribution Type"  cansearch="true"  canlist="true" />
+<column  name="anonymous"  type="enumeration"  label="Anonymous"  cansearch="false"  canlist="false" />
+<column  name="from_candidate"  type="enumeration"  label="From Candidate"  cansearch="true"  canlist="false" />
+<column  name="match_amount"  type="double"  label="Match Amount"  cansearch="false"  canlist="false" />
+<column  name="location"  type="latlon"  label="Location"  cansearch="false"  canlist="false" />
+</table>
+
+</tables>

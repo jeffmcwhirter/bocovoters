@@ -1,0 +1,21 @@
+<tables>
+<table  id="boulder_campaign_expenditures"  name="Boulder Campaign Expenditures"  showEntryCreate="false" >
+<column  name="committee"  type="enumeration"  label="Committee"  cansearch="true"  canlist="true" />
+<column  name="full_name"  type="string"  label="Full Name"  cansearch="true"  canlist="true" />
+<column  name="expenditure"  unit="$"  type="double"  label="Expenditure"  cansearch="true"  canlist="true"  numberFormat="##0.00" />
+<column  name="purpose"  changetype="true"  size="500"  type="string"  label="Purpose"  cansearch="true"  canlist="true" />
+<column  name="type"  type="enumeration"  label="Type"  cansearch="true"  canlist="true" />
+<column  name="candidate"  type="enumeration"  label="Candidate"  cansearch="true"  canlist="true" />
+<column  name="filing_date"  type="date"  label="Filing Date"  cansearch="true"  canlist="true"  format="MM/dd/yyyy" />
+<column  name="amended_date"  type="date"  label="Amended Date"  cansearch="false"  canlist="false"  format="MM/dd/yyyy" />
+<column  name="official_filing"  type="enumeration"  label="Official Filing"  cansearch="true"  canlist="true" />
+<column  name="transaction_date"  type="date"  label="Transaction Date"  cansearch="false"  canlist="false"  format="MM/dd/yyyy" />
+<column  name="last_name"  type="string"  label="Last Name"  cansearch="false"  canlist="false" />
+<column  name="first_name"  type="string"  label="First Name"  cansearch="false"  canlist="false" />
+<column  name="street"  type="string"  label="Street"  cansearch="true"  canlist="true" />
+<column  name="city"  type="enumeration"  label="City"  cansearch="true"  canlist="true" />
+<column  name="state"  type="enumeration"  label="State"  cansearch="true"  canlist="true" />
+<column  name="zip"  type="string"  label="Zip"  cansearch="false"  canlist="false" />
+</table>
+
+</tables>
