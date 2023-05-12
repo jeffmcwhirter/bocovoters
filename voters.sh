@@ -1,16 +1,16 @@
 #!/bin/sh
 mydir=`dirname $0`
-source ${mydir}/init.sh
+source ${BOCO}/scripts/init.sh
 
 
 init_voting_history() {
     if [ ! -f "${voter_history}" ]
     then
 	echo "making ${voter_history}"
-	cp source/Master_Voting_History_List_Part1.txt ${voter_history}
-	tail -n+2 source/Master_Voting_History_List_Part2.txt >> ${voter_history}
-	tail -n+2 source/Master_Voting_History_List_Part3.txt >> ${voter_history}
-	tail -n+2 source/Master_Voting_History_List_Part4.txt >> ${voter_history}    
+	unzip -p ${datadir}/Master_Voting_History_List_Part1.txt.zip  >${voter_history}
+	unzip -p ${datadir}/Master_Voting_History_List_Part2.txt.zip | tail -n+2 >> ${voter_history}
+	unzip -p ${datadir}/Master_Voting_History_List_Part3.txt.zip | tail -n+2>> ${voter_history}
+	unzip -p ${datadir}/Master_Voting_History_List_Part4.txt.zip | tail -n+2>> ${voter_history}    
     fi
 }
 
@@ -354,7 +354,7 @@ do_final() {
 
 do_db() {
     echo "making db"
-    seesv -db "file:${mydir}/db.properties" voters_final.csv > bocovotersdb.xml
+    seesv -db "file:${BOCO}/db.properties" voters_final.csv > bocovotersdb.xml
  }
 
 
@@ -369,10 +369,13 @@ do_release() {
 #exit
 
 
+fetch_registered_voters
+exit
 do_all() {
     init_voting_history
     fetch_voting_report
-#    fetch_registered_voters
+    fetch_registered_voters
+    echo "**** do_demographics"
     do_demographics
     echo "**** do_prep"
     do_prep
