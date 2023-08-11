@@ -1,6 +1,6 @@
 process() {
     echo "processing $1"
-    sh ~/bin/seesv.sh -start Splits -stop Total -roll 0-20 -trim 0 -notpattern 0 "^\$" -p "$1" -o "\${name}.csv"
+    sh ~/bin/seesv.sh -start Splits -stop Total -roll 0-20 -set 0 0 split -trim 0 -notpattern 0 "^\$" -p "$1" -o "\${name}.csv"
 }
 
 process city_of_boulder.xls
