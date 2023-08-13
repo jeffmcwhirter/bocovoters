@@ -18,13 +18,14 @@ make_boulder_ballots() {
     if [ "$year" == "2022" ]; then
 	thesplits="${splits_2022}"
     fi
+    echo "splits:$thesplits"
     ballots=ballots_sent_${year}.csv
     precinct_histogram=${file_prefix_precinct}_${year}.csv    
     echo "making $year boulder ballots with file ${ballots} and splits ${thesplits}"
     seesv  -delimiter "|"  \
 	   -c "precinct,split,yob,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE,RES_ADDRESS" \
 	   -concat precinct,split "." full_precinct \
-	   -ifin split ${thesplits}  full_precinct \
+	   -ifin split "${thesplits}"  full_precinct \
 	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "," "voted_date" \
 	   -change voted_date "," "" \
 	   -change voted_date "-${yy}$" "-${year}" \
@@ -37,6 +38,8 @@ make_boulder_ballots() {
 	   -if -notpattern voted_date "" -setcol "" "" voted 1 -endif \
 	   -p  ${datadir}/ce-068-${year}.txt.zip > ${ballots}
 }    
+
+
 
 
 do_histogram() {

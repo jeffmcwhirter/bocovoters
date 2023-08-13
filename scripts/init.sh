@@ -15,41 +15,148 @@ export dots=5000
 mkdir -p ${tmpdir}
 mkdir -p ${staging}
 
+function get_working_dir() {
+    mkdir -p ${target}
+    local fileresult=${target}
+    echo "$fileresult"
+}
 
-boulder_voters=voters_boulder.csv
-voter_history=${tmpdir}/voter_history.csv
-unique_voter_history=voter_history_unique.csv
+function get_tmp_file()
+{
+    local  working=tmp/${1}
+    echo "$working"
+}
+
+function get_working_file()
+{
+    local  working=$(get_working_dir)/${1}
+    echo "$working"
+}
+
+
+function get_count_file()
+{
+    local  myresult=$(get_working_file "count_${1}.csv")
+    echo "$myresult"
+}
+
+function get_history_file()
+{
+    local  myresult=$(get_working_file "history_${1}.csv")
+    echo "$myresult"
+}
+
+
+
+
 precincts=${datadir}/boco_precincts.csv
 geocodio=${datadir}/voters_addresses_geocodio.csv.zip
+geocode=${datadir}/geocode.csv
+
+export current_year=2023
+years_set="2022,2021,2020,2019,2018"
+# Split the string_set into an array using comma as the delimiter
+IFS=',' read -ra years <<< "$years_set"
 
 
-#fetch the Master_Voting_History_List_Part[1-N].txt from the url and copy them
-#into a source subdirectory from where you are running the voters.sh script
-export voter_history_url=https://bcelections.sharefile.com/home/shared/fo740e74-18fd-486c-8bc4-0794c4bbd2ff
-voter_history_p="4bC!Erlction!$"
-new="bC!Erlction!$"
+
 
 export voting_report_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-068_Voters_With_Ballots_List_Public.zip
-export voting_report_file=ce-068-2022.txt
+export voting_report_file="ce-068-${current_year}.txt"
 export voting_report=${datadir}/${voting_report_file}.zip
 
 
 export registered_voters_url=https://election.boco.solutions/ElectionDataPublicFiles/CE-VR011B_EXTERNAL.zip
-export registered_voters_file=registered_voters.txt
-export registered_voters=${datadir}/${registered_voters_file}.zip
+export registered_voters_file=$(get_tmp_file "registered_voters.txt")
+
+
 
 export splits_2021=${splitsdir}/boulder_splits_2021.csv
-export splits_2022=${splitsdir}/boulder_splits_2022.csv
+export target=city_of_boulder
+export splits_2022=${splitsdir}/${target}.csv
 export splits=${splits_2022}
 
 
 
 
-seesv() {
-    ${csv}  -cleaninput -dots  ${dots}  "$@"
+
+#voter history comes from the below URL. Unzip the file and zip up each
+#EX-002_Public_Voting_History_List_Part[1-4].txt  file and put them in the bocovoters/data directory
+#https://bouldercounty.gov/elections/maps-and-data/data-access/#Master-Voter-History-Data-File
+voter_history=$(get_tmp_file "voter_history.csv")
+unique_voter_history=$(get_tmp_file "voter_history_unique.csv")
+
+
+
+process_voter_args() {
+    while [[ $# -gt 0 ]]
+    do
+	arg=$1
+	case $arg in
+        -target)
+	    shift
+	    target=$1
+            export splits="${splitsdir}/${target}.csv"
+	    shift
+	    if [ "$target" != "all" ]; then
+		echo "using splits file: ${splits}"
+		if [ ! -f "${splits}" ]
+		then
+		    echo "Error: unknown splits file:${splits}"
+		    echo "Can be one of: city_of_boulder city_of_lafayette city_of_longmont city_of_longmont_ward_1 city_of_longmont_ward_2 city_of_longmont_ward_3 city_of_louisville city_of_louisville_ward_1 city_of_louisville_ward_2 city_of_louisville_ward_3 town_of_erie town_of_jamestown town_of_lyons town_of_nederland town_of_superior town_of_ward"
+		    exit
+		fi
+	    fi
+            ;;
+	-prep)
+	    do_prep
+	    shift
+	    ;;
+	-quit)
+	    exit
+	    ;;
+	-mergegeo)
+	    shift
+	    do_merge_geocode $1
+	    exit
+	    shift
+	    ;;
+	-fetchreport)
+	    fetch_voting_report
+	    shift
+	    ;;
+	-call)
+	    shift
+	    init_globals
+	    $1
+	    exit
+	    ;;
+	*)
+	    echo "Unknown argument:$arg"
+	    echo "usage: \n\t-target <target> \n\t-prep\n\t-mergegeo <new file>\n\t-fetchreport\n\t-quit"
+	    exit 1
+	    ;;
+	esac
+    done
+
+    init_globals
+
+}
+
+init_globals() {
+    export target_voters=$(get_working_file target_voters.csv)
+    export working_dir=$(get_working_dir)
 }
 
 
+seesv() {
+    ${csv}  -cleaninput -dots  "tab${dots}"  "$@"
+}
+
+
+#
+#The voting report shows whether voters have voted yet in the current election
+#
 fetch_voting_report() {
     echo "fetching voter report"
     wget  -q -O ${tmpdir}/CE-068_Voters_With_Ballots_List_Public.zip ${voting_report_url}
@@ -66,17 +173,15 @@ fetch_voting_report() {
 
 
 fetch_registered_voters() {
-    if [ ! -f "${tmpdir}/${registered_voters_file}" ]
+    if [ ! -f "${registered_voters_file}" ]
     then
 	echo "fetching registered voters"
 	wget  -O tmp.zip ${registered_voters_url}
-	cd ${tmpdir}
-	jar -xvf ../tmp.zip
-	mv CE-VR011B_EXTERNAL* ${registered_voters_file}
-	jar -cvMf ${registered_voters_file}.zip ${registered_voters_file}
-	echo "Moving registered_voters.txt.zip to ${registered_voters}"
-	mv "${registered_voters_file}.zip" "${registered_voters}"
-	cd ..
+	unzip -o  tmp.zip -d tmp
+	mv tmp/CE-VR011B_EXTERNAL* ${registered_voters_file}
+	zip -j  ${registered_voters_file}.zip ${registered_voters_file}
+	echo "Moving registered_voters.txt.zip to ${datadir}"
+	mv "${registered_voters_file}.zip" "${datadir}/${registered_voters}"
 	rm tmp.zip
     fi
 }
@@ -111,5 +216,6 @@ release_plugin() {
 	sh ~/source/ramadda/bin/scpgeode.sh 50.112.99.202  $var plugins
    done
 }
+
 
 

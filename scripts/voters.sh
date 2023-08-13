@@ -1,61 +1,105 @@
 #!/bin/sh
 mydir=`dirname $0`
 source ${BOCO}/scripts/init.sh
+export ADDRESS_KEY=address_key
+
+
 
 
 init_voting_history() {
     if [ ! -f "${voter_history}" ]
     then
 	echo "making voter history: ${voter_history}"
-	unzip -p ${datadir}/Master_Voting_History_List_Part1.txt.zip  >${voter_history}
-	unzip -p ${datadir}/Master_Voting_History_List_Part2.txt.zip | tail -n+2 >> ${voter_history}
-	unzip -p ${datadir}/Master_Voting_History_List_Part3.txt.zip | tail -n+2>> ${voter_history}
-	unzip -p ${datadir}/Master_Voting_History_List_Part4.txt.zip | tail -n+2>> ${voter_history}    
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part1.txt.zip  >${voter_history}
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part2.txt.zip | tail -n+2 >> ${voter_history}
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part3.txt.zip | tail -n+2 >> ${voter_history}
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part4.txt.zip | tail -n+2 >> ${voter_history}	
     fi
 }
 
 
-do_prep() {
+do_voting_report() {
+
+    ##For now just create empty files since there isn't any voter reports
+    echo "VOTER_ID,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE,voted_in_2023" >${working_dir}/voted_in_${current_year}.csv
+    cp ${working_dir}/voted_in_${current_year}.csv     ${working_dir}/all_voted_in_${current_year}.csv    
+    return
+
     echo "processing voting report ${voting_report}"
-    seesv  -delimiter "|"  -pattern RES_CITY BOULDER \
-	   -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
-	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_2022 \
-	   -trim voted_in_2022 \
-	   -change voted_in_2022 "^$" false \
-	   -change voted_in_2022 ".*[0-9]+.*" true \
-	   -p ${voting_report}  > voted_in_2022.csv
+    seesv  -delimiter "|"  -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
+	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_${current_year} \
+	   -trim voted_in_${current_year} \
+	   -change voted_in_${current_year} "^$" false \
+	   -change voted_in_${current_year} ".*[0-9]+.*" true \
+	   -p ${voting_report}  > ${working_dir}/voted_in_${current_year}.csv
     seesv  -delimiter "|"   \
 	    -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
-	    -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_2022 \
-	    -trim voted_in_2022 \
-	    -change voted_in_2022 "^$" false \
-	    -change voted_in_2022 ".*[0-9]+.*" true \
-	    -p ${voting_report}  > all_voted_in_2022.csv
-
-    echo "processing registered voters"
-#    seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  -pattern res_city BOULDER  -p ${registered_voters} > voters_base.csv
-
-    echo "splits: ${splits} ${registered_voters}"
-    seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  -concat precinct,split "." precinct_split  \
-	    -ifin  split ${splits} precinct_split -notcolumns precinct_split -p ${registered_voters} > voters_base.csv        
-
-    echo "making ${boulder_voters}"
-    seesv -if -pattern mail_addr1,mailing_country "^$" -copycolumns res_address mail_addr1  -endif\
-	   -if -pattern mailing_city,mailing_country "^$" -copycolumns res_city mailing_city  -endif \
-	   -if -pattern mailing_state,mailing_country "^$" -copycolumns res_state mailing_state  -endif\
-	   -if -pattern mailing_zip,mailing_country "^$" -copycolumns res_zip_code mailing_zip  -endif\
-	   -p voters_base.csv > ${boulder_voters}
-
-    echo "making addresses"
-    seesv -columns res_address,res_city -change res_address " APT .*" "" -change res_address " UNIT .*" "" -trim res_address -unique res_address "" -insert "" state Colorado  -set 0 0 address -set 1 0 city -p ${boulder_voters} > voters_addresses.csv
-#    echo "making addresses short"
-#    seesv -sample 0.01  -p voters_addresses.csv > voters_addresses_short.csv        
-#    rm voters_base.csv
+	    -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_${current_year} \
+	    -trim voted_in_${current_year} \
+	    -change voted_in_${current_year} "^$" false \
+	    -change voted_in_${current_year} ".*[0-9]+.*" true \
+	    -p ${voting_report}  > ${working_dir}/all_voted_in_${current_year}.csv
 }
 
 
-#do_prep
-#exit
+
+do_prep() {
+    init_voting_history
+    fetch_registered_voters
+    if [ "$target" != "all" ]; then
+	echo "processing registered voters: ${registered_voters_file}  splits: ${splits} "
+	seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  -concat precinct,split "." precinct_split  \
+	       -ifin  split ${splits} precinct_split -notcolumns precinct_split -p ${registered_voters_file} > ${working_dir}/voters_base.csv
+    else
+	echo "processing registered voters: ${registered_voters_file}  splits: ALL "
+	seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"   -p ${registered_voters_file} > ${working_dir}/voters_base.csv
+    fi
+
+
+
+    echo "making ${target_voters}"
+    seesv -if -pattern mail_addr1,mailing_country "^$" -copycolumns res_address mail_addr1  -endif\
+	  -if -pattern mailing_city,mailing_country "^$" -copycolumns res_city mailing_city  -endif \
+	  -if -pattern mailing_state,mailing_country "^$" -copycolumns res_state mailing_state  -endif\
+	  -if -pattern mailing_zip,mailing_country "^$" -copycolumns res_zip_code mailing_zip  -endif\
+	  -p ${working_dir}/voters_base.csv >     "${target_voters}"
+
+    echo "making addresses"
+    seesv -columns res_address,res_city,res_zip_code \
+	  -change res_address " APT .*" "" \
+	  -change res_address " UNIT .*" "" \
+	  -change res_address " # .*" "" \
+	  -trim res_address -unique res_address "" \
+	  -insert "" state Colorado  \
+	  -set 0 0 address  -set 1 0 city -set res_zip_code 0 zipcode \
+	  -p   "${target_voters}" > $(get_working_file voters_addresses.csv)
+
+    do_find_missing_geocode
+}
+
+
+do_find_missing_geocode() {
+    file="missing_addresses_${target}.csv"
+    seesv    -join "address,city" "latitude,longitude" "${geocode}" "address,city" "MISSING"   \
+	     -find latitude MISSING \
+	     -notcolumns latitude,longitude \
+	     -p  $(get_working_file voters_addresses.csv) > ${file}
+    echo "missing addresses: ${file}"
+    wc -l "${file}"
+}
+
+
+do_merge_geocode() {
+    newfile="$1"
+    echo "merging geocode files"
+    seesv -columns "0-5" \
+	  -case address,city,zipcode,state upper \
+	  -p "$newfile" > tmp.csv
+    seesv -p ${geocode} tmp.csv | seesv -unique "address,city" exact -p > mergedgeo.csv
+    cp mergedgeo.csv  ${geocode}
+    echo "the main geocode file has been updated: ${geocode}"
+}
+
 
 
 do_precincts() {
@@ -80,254 +124,110 @@ do_precincts() {
 
 
 do_history() {
-   echo "making unique voting history from history: ${voter_history} target voters: ${boulder_voters}"
-   seesv -ifin voter_id ${boulder_voters}  voter_id -p ${voter_history}  > tmp.csv
+   echo "making unique voting history from history: ${voter_history} target voters: ${target_voters}"
+   seesv -ifin voter_id "${target_voters}"  voter_id -p ${voter_history}  > tmp.csv
    seesv -unique  "voter_id,election_date" "" -p tmp.csv > ${unique_voter_history}
-   seesv  -pattern election_date "(11/../2021)" -p ${unique_voter_history} > history_2021.csv         
-   seesv  -pattern election_date "(11/../2020)" -p ${unique_voter_history} > history_2020.csv
-   seesv  -pattern election_date "(11/../2019)" -p ${unique_voter_history} > history_2019.csv
-   seesv  -pattern election_date "(11/../2018)" -p ${unique_voter_history} > history_2018.csv   
-   seesv  -pattern election_date "(11/../2017|11/../2019|11/../2021)" -p ${unique_voter_history} > history_offyears3.csv   
-   seesv -pattern election_date "(11/../2001|11/../2003|11/../2005|11/../2007|11/../2009|11/../2011|11/../2013|11/../2015|11/../2017|11/../2019|11/../2021)" -p ${unique_voter_history} > history_offyears10.csv
+
+   for year in "${years[@]}"; do
+       echo "\tmaking history ${year}"         
+       seesv  -pattern election_date "(11/../${year})" -p ${unique_voter_history} > $(get_history_file ${year})         
+   done   
+
+
+   echo "\tmaking offyears"
+   seesv  -pattern election_date "(11/../2017|11/../2019|11/../2021)" -p ${unique_voter_history} > $(get_history_file offyears3)   
+   seesv -pattern election_date "(11/../2001|11/../2003|11/../2005|11/../2007|11/../2009|11/../2011|11/../2013|11/../2015|11/../2017|11/../2019|11/../2021)" -p ${unique_voter_history} > $(get_history_file offyears10)
 }
+
+
+
 
 
 do_counts() {
     echo "making voter counts"
     cols=VOTER_ID,count
-    seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2021" -change voted_in_2021 1 true -p history_2021.csv >count_2021.csv
-    seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2020" -change voted_in_2020 1 true -p history_2020.csv >count_2020.csv
-    seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in 2019" -change voted_in_2019 1 true -p history_2019.csv >count_2019.csv
-
-    seesv -countunique voter_id -columns ${cols} -set 1 0 "Last 3 offyear elections" -p history_offyears3.csv   >count_offyears3.csv
-    seesv -countunique voter_id -columns ${cols} -set 1 0 "Last 10 offyear elections" -p history_offyears10.csv   >count_offyears10.csv
-    echo "making all count"
-    seesv -countunique voter_id -columns ${cols} -set 1 0 "All elections" -p ${unique_voter_history}  >count_all.csv
-    echo "making primary count"
-    seesv -pattern election_type Primary  -countunique voter_id -columns ${cols} -set 1 0 "Primary elections"  -p ${unique_voter_history} >count_primary.csv
+    
+    for year in "${years[@]}"; do
+	seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in $year" -change "voted_in_$year" 1 true \
+	      -p $(get_history_file "$year") > $(get_count_file "$year")
+    done
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Last 3 offyear elections" -p $(get_history_file offyears3)   > $(get_count_file offyears3)
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "Last 10 offyear elections" -p $(get_history_file offyears10)   > $(get_count_file offyears10)
+    echo "\tmaking all count"
+    seesv -countunique voter_id -columns ${cols} -set 1 0 "All elections" -p ${unique_voter_history}  >$(get_count_file all)
+    echo "\tmaking primary count"
+    seesv -pattern election_type Primary  -countunique voter_id -columns ${cols} -set 1 0 "Primary elections"  -p ${unique_voter_history} >$(get_count_file primary)
 }
 
-#do_history
-#do_counts
-#exit
 
 
 do_demographics() {
-    echo "cleaning up the demographics"
-#	-rand latitude 39.983 40.042  -rand longitude -105.303 -105.216 \
-#	-notcolumns latitude,longitude \
-    seesv -notcolumns "regex:(?i).*veteran.*" \
-	  -between latitude 39.955 40.1 \
-	  -between longitude -105.3777 -105.155 \
-	  -concat "latitude,longitude" ";" Location -notcolumns latitude,longitude \
-	  -columns "address,location,\
-ACS Demographics/Median age/Total/Value, \
-ACS Economics/Number of households/Total/Value, \
-ACS Economics/Median household income/Total/Value, \
-regex:(?i).*Percentage \
-"    \
--operator "\
-ACS Demographics/Population by age range/Male: Under 5 years/Percentage, \
-ACS Demographics/Population by age range/Male: 5 to 9 years/Percentage, \
-ACS Demographics/Population by age range/Male: 10 to 14 years/Percentage,\
-ACS Demographics/Population by age range/Male: 15 to 17 years/Percentage" "Male under 18" "+" \
--operator "\
-ACS Demographics/Population by age range/Male: 18 and 19 years/Percentage, \
-ACS Demographics/Population by age range/Male: 20 years/Percentage, \
-ACS Demographics/Population by age range/Male: 21 years/Percentage, \
-ACS Demographics/Population by age range/Male: 22 to 24 years/Percentage, \
-ACS Demographics/Population by age range/Male: 25 to 29 years/Percentage" "Male 18 to 30" "+" \
--operator "\
-ACS Demographics/Population by age range/Male: 30 to 34 years/Percentage, \
-ACS Demographics/Population by age range/Male: 35 to 39 years/Percentage, \
-ACS Demographics/Population by age range/Male: 40 to 44 years/Percentage, \
-ACS Demographics/Population by age range/Male: 45 to 49 years/Percentage, \
-ACS Demographics/Population by age range/Male: 50 to 54 years/Percentage, \
-ACS Demographics/Population by age range/Male: 55 to 59 years/Percentage" "Male 30 to 60" "+" \
--operator "\
-ACS Demographics/Population by age range/Male: 60 and 61 years/Percentage, \
-ACS Demographics/Population by age range/Male: 62 to 64 years/Percentage, \
-ACS Demographics/Population by age range/Male: 65 and 66 years/Percentage, \
-ACS Demographics/Population by age range/Male: 67 to 69 years/Percentage, \
-ACS Demographics/Population by age range/Male: 70 to 74 years/Percentage, \
-ACS Demographics/Population by age range/Male: 75 to 79 years/Percentage,\
-ACS Demographics/Population by age range/Male: 80 to 84 years/Percentage, \
-ACS Demographics/Population by age range/Male: 85 years and over/Percentage" "Male 60 plus" "+" \
--operator "\
-ACS Demographics/Population by age range/Female: Under 5 years/Percentage, \
-ACS Demographics/Population by age range/Female: 5 to 9 years/Percentage, \
-ACS Demographics/Population by age range/Female: 10 to 14 years/Percentage,\
-ACS Demographics/Population by age range/Female: 15 to 17 years/Percentage" "Female under 18" "+" \
--operator "\
-ACS Demographics/Population by age range/Female: 18 and 19 years/Percentage, \
-ACS Demographics/Population by age range/Female: 20 years/Percentage, \
-ACS Demographics/Population by age range/Female: 21 years/Percentage, \
-ACS Demographics/Population by age range/Female: 22 to 24 years/Percentage, \
-ACS Demographics/Population by age range/Female: 25 to 29 years/Percentage" "Female 18 to 30" "+" \
--operator "\
-ACS Demographics/Population by age range/Female: 30 to 34 years/Percentage, \
-ACS Demographics/Population by age range/Female: 35 to 39 years/Percentage, \
-ACS Demographics/Population by age range/Female: 40 to 44 years/Percentage, \
-ACS Demographics/Population by age range/Female: 45 to 49 years/Percentage, \
-ACS Demographics/Population by age range/Female: 50 to 54 years/Percentage, \
-ACS Demographics/Population by age range/Female: 55 to 59 years/Percentage" "Female 30 to 60" "+" \
--operator "\
-ACS Demographics/Population by age range/Female: 60 and 61 years/Percentage, \
-ACS Demographics/Population by age range/Female: 62 to 64 years/Percentage, \
-ACS Demographics/Population by age range/Female: 65 and 66 years/Percentage, \
-ACS Demographics/Population by age range/Female: 67 to 69 years/Percentage, \
-ACS Demographics/Population by age range/Female: 70 to 74 years/Percentage, \
-ACS Demographics/Population by age range/Female: 75 to 79 years/Percentage,\
-ACS Demographics/Population by age range/Female: 80 to 84 years/Percentage, \
-ACS Demographics/Population by age range/Female: 85 years and over/Percentage" "Female 60 plus" "+" \
--operator "Male under 18,Female under 18" "Age under 18" average \
--notcolumns "Male under 18,Female under 18" \
--operator "Male 18 to 30,Female 18 to 30" "Age 18 to 30" average \
--notcolumns "Male 18 to 30,Female 18 to 30"  \
--operator "Male 30 to 60,Female 30 to 60" "Age 30 to 60" average \
--notcolumns "Male 30 to 60,Female 30 to 60" \
--operator "Male 60 plus,Female 60 plus" "Age 60 plus" average \
--notcolumns "Male 60 plus,Female 60 plus"  \
--notcolumns "regex:(?i).*/Female.*" -notcolumns "regex:(?i).*/Male.*"  \
--operator "ACS Economics/Household income/Less than \$10_000/Percentage" "Income less than 10000" "+" \
--operator "\
-ACS Economics/Household income/\$10_000 to \$14_999/Percentage, \
-ACS Economics/Household income/\$15_000 to \$19_999/Percentage, \
-ACS Economics/Household income/\$20_000 to \$24_999/Percentage, \
-ACS Economics/Household income/\$25_000 to \$29_999/Percentage" "Income 10000 to 30000" + \
--operator "\
-ACS Economics/Household income/\$30_000 to \$34_999/Percentage, \
-ACS Economics/Household income/\$35_000 to \$39_999/Percentage, \
-ACS Economics/Household income/\$40_000 to \$44_999/Percentage, \
-ACS Economics/Household income/\$45_000 to \$49_999/Percentage, \
-ACS Economics/Household income/\$50_000 to \$59_999/Percentage,\
-ACS Economics/Household income/\$60_000 to \$74_999/Percentage,  \
-ACS Economics/Household income/\$75_000 to \$99_999/Percentage" "Income  30000 to 100000" + \
--operator "\
-ACS Economics/Household income/\$100_000 to \$124_999/Percentage, \
-ACS Economics/Household income/\$125_000 to \$149_999/Percentage, \
-ACS Economics/Household income/\$150_000 to \$199_999/Percentage, \
-ACS Economics/Household income/\$200_000 or more/Percentage" "Income 100000 plus" + \
--operator "ACS Demographics/Race and ethnicity/Hispanic or Latino/Percentage" "Percent Hispanic" "+" \
--operator "ACS Demographics/Median age/Total/Value" "Median age" "+" \
--operator "ACS Families/Household type by household/Family households/Percentage" "Percent family household" "+" \
--operator "ACS Families/Household type by household/Nonfamily households/Percentage" "Percent non family household" "+" \
--operator "ACS Housing/Ownership of occupied units/Owner occupied/Percentage" "Percent owner occupied" "+" \
--operator "ACS Housing/Ownership of occupied units/Renter occupied/Percentage" "Percent renter occupied" "+" \
--operator " \
-ACS Housing/Value of owner_occupied housing units/Less than \$10_000/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$10_000 to \$14_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$15_000 to \$19_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$20_000 to \$24_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$25_000 to \$29_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$30_000 to \$34_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$35_000 to \$39_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$40_000 to \$49_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$50_000 to \$59_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$60_000 to \$69_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$70_000 to \$79_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$80_000 to \$89_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$90_000 to \$99_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$100_000 to \$124_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$125_000 to \$149_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$150_000 to \$174_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$175_000 to \$199_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$200_000 to \$249_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$250_000 to \$299_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$300_000 to \$399_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$400_000 to \$499_999/Percentage" "House value to 500000" "+" \
--operator " \
-ACS Housing/Value of owner_occupied housing units/\$500_000 to \$749_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$750_000 to \$999_999/Percentage" "House value 500000 to 1 million" "+" \
--operator " \
-ACS Housing/Value of owner_occupied housing units/\$1_000_000 to \$1_499_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$1_500_000 to \$1_999_999/Percentage, \
-ACS Housing/Value of owner_occupied housing units/\$2_000_000 or more/Percentage"  "House value greater 1 million" "+" \
--scale "age_under_18,age_18_to_30,age_30_to_60,age_60_plus,income_less_than_10000,income_10000_to_30000,income_30000_to_100000,income_100000_plus,percent_hispanic,percent_family_household,percent_non_family_household,percent_owner_occupied,percent_renter_occupied,house_value_to_500000,house_value_500000_to_1_million,house_value_greater_1_million" 0 100 0 \
--round "age_under_18,age_18_to_30,age_30_to_60,age_60_plus,income_less_than_10000,income_10000_to_30000,income_30000_to_100000,income_100000_plus,percent_hispanic,percent_family_household,percent_non_family_household,percent_owner_occupied,percent_renter_occupied,house_value_to_500000,house_value_500000_to_1_million,house_value_greater_1_million" \
--notcolumns "regex:(?i).*Housing/.*" \
--notcolumns "regex:(?i).* structure/.*" \
--notcolumns "ACS Demographics/Median age/Total/Value" \
--notcolumns "regex:(?i).*/household.*" \
--notcolumns "regex:(?i).*household/.*" \
--notcolumns "regex:(?i).*households/.*" \
--notcolumns "regex:(?i).*ethnicity/.*" \
--notcolumns "regex:(?i).*income/.*" \
--p  ${geocodio} >  voters_geocode_trim.csv
-}
+    if [ ! -f "tmp/voters_geocode_trim.csv" ]
+    then
+	echo "cleaning up the demographics" 
+	seesv -columns "address,city,state,latitude,longitude" \
+	      -p  ${geocodio} >  tmp/voters_geocode_trim.csv
+    fi
+}	
+
+
 
 
 
 do_joins() {
     echo "doing joins"
-    infile=${boulder_voters}
-    cp ${infile} working.csv
+    cp "${target_voters}" working.csv
 
-    seesv -join precinct_name precinct_turnout_2019 ${datadir}/precincts_turnout.csv precinct 0 -p working.csv > tmp.csv
+
+    echo "\tjoining 2020 turnout"
+    seesv -join precinct_name precinct_turnout_2020 ${datadir}/precincts_turnout_2020.csv precinct 0 -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
-    seesv -join 0 voted_in_2022 voted_in_2022.csv voter_id false        -p working.csv > tmp.csv
+    echo "\tjoining voted in"
+    seesv -join 0 "voted_in_${current_year}" "${working_dir}/voted_in_${current_year}.csv" voter_id false        -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
-    seesv -join 0 1 count_2021.csv voter_id false        -p working.csv > tmp.csv
+    echo "\tjoining voting history"
+    for year in "${years[@]}"; do
+	seesv -join voter_id 1 $(get_count_file "$year") voter_id false        -p working.csv > tmp.csv
+	mv tmp.csv working.csv
+    done
+
+    seesv -join voter_id 1 $(get_count_file offyears3) voter_id 0        -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
-    seesv -join 0 1 count_2020.csv voter_id false        -p working.csv > tmp.csv
+    seesv -join voter_id 1  $(get_count_file offyears10) voter_id 0        -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
-    seesv -join 0 1 count_2019.csv voter_id false        -p working.csv > tmp.csv
+    seesv -join voter_id 1  $(get_count_file all) voter_id 0          -p working.csv > tmp.csv
+    mv tmp.csv working.csv
+
+    seesv -join 0 1 $(get_count_file primary) voter_id 0          -p working.csv > tmp.csv
     mv tmp.csv working.csv    
 
-    seesv -join 0 1 count_offyears3.csv voter_id 0        -p working.csv > tmp.csv
-    mv tmp.csv working.csv
-
-    seesv -join 0 1 count_offyears10.csv voter_id 0        -p working.csv > tmp.csv
-    mv tmp.csv working.csv
-
-    seesv -join 0 1  count_all.csv voter_id 0          -p working.csv > tmp.csv
-    mv tmp.csv working.csv
-
-    seesv -join 0 1 count_primary.csv voter_id 0          -p working.csv > tmp.csv
-    mv tmp.csv working.csv    
-
-
-
-#    seesv -join 0 1 count_municipal.csv voter_id 0          -p working.csv > tmp.csv
-#    mv tmp.csv working.csv
 #join the precincts
+    echo "\tjoining precincts"
     seesv -join 0 1 ${precincts} precinct  ""         -p working.csv > tmp.csv
     mv tmp.csv working.csv
 #join the  demographics
 
+    echo "\tdoing geocode join"
+
 #create a new column and remove the UNIT and APT suffix to do the join with the geocoded addresses
-    seesv -copy res_address res_address_trim -change res_address_trim " APT .*" "" -change res_address_trim " UNIT .*" "" -p working.csv > tmp.csv
+    seesv -copy res_address ${ADDRESS_KEY} -change ${ADDRESS_KEY} " APT .*" "" -change ${ADDRESS_KEY} " UNIT .*" "" -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
-
-    do_join_demographics working.csv tmp.csv
+    seesv    -join "address,city" "latitude,longitude" "${geocode}" "${ADDRESS_KEY},res_city" "NaN"   -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
 
 ##Delete the temp address
-    seesv -notcolumns res_address_trim -p working.csv > tmp.csv
+    seesv -notcolumns ${ADDRESS_KEY} -p working.csv > tmp.csv
 
-    mv tmp.csv voters_joined.csv
+
+    mv tmp.csv ${working_dir}/voters_joined.csv
     rm working.csv
 }
-
-
-
-
-do_join_demographics() {
-    echo "doing demographics join"
-    seesv    -join address ".*" voters_geocode_trim.csv res_address_trim "0"    -notcolumns address -p $1 > $2
-}
-
-
-
-#do_joins
-#exit
-
 
 
 do_final() {
@@ -342,54 +242,38 @@ do_final() {
 	    -set res_zip_code 0 zip_code -set res_zip_plus 0 zip_plus \
 	    -columnsbefore first_name  name,party,status,status_reason,gender,address,city,state,zip_code \
 	    -columnsbefore city  street_name,neighborhood \
-	    -columnsafter  city  location  \
 	    -concat street_name,street_type " " "full street name" \
 	    -columnsafter street_name full_street_name \
-	    -columnsafter precinct precinct_turnout_2019 \
-	    -even address \
-	    -set even 0 "Address even" \
+	    -columnsafter precinct precinct_turnout_2020 \
+	    -even address -set even 0 "Address even" \
 	    -notpattern address "1731 HAWTHORN AVE" \
-	    -p  voters_joined.csv > voters_final.csv
+	    -p  ${working_dir}/voters_joined.csv > voters_${target}.csv
 }
-
-#do_final
-#exit
 
 do_db() {
     echo "making db"
-    seesv -db "file:${BOCO}/voters/db.properties" voters_final.csv > bocovotersdb.xml
+    seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv" > boulder_county_voters_db.xml
+    release_plugin boulder_county_voters_db.xml
 }
-
 
 
 do_release() {
-    release_plugin bocovotersdb.xml 
-    stage_ramadda  voters_final.csv 
+    stage_ramadda  "voters_${target}.csv"
 }
 
-#do_db
-#release_plugin bocovotersdb.xml 
-#exit
 
 
 do_all() {
-    init_voting_history
-    fetch_voting_report
-    fetch_registered_voters
-    echo "**** do_demographics"
-    do_demographics
-    echo "**** do_prep"
     do_prep
-    echo "**** do_history"
     do_history
-    echo "**** do_counts"
     do_counts
+    do_voting_report
     do_joins
-    echo "**** do_final"
     do_final
-    do_db
+#    do_db
     do_release
 }
 
 
+process_voter_args "$@"
 do_all
