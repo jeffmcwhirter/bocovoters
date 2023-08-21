@@ -256,7 +256,7 @@ do_final() {
 	    -columnsafter city location  \
 	    -columnsafter precinct precinct_turnout_2020 \
 	    -even address -set even 0 "Address even" \
-	    -notpattern address "1731 HAWTHORN AVE" \
+	    -ifnotin address "file:${BOCO}/voters/excludedaddresses.txt"  address \
 	    -p  ${working_dir}/voters_joined.csv > voters_${target}.csv
 }
 
