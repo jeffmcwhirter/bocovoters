@@ -57,11 +57,15 @@ do_prep() {
 
 
 
+
+
     echo "making ${target_voters}"
-    seesv -if -pattern mail_addr1,mailing_country "^$" -copycolumns res_address mail_addr1  -endif\
+    seesv -add is_apartment false \
+	  -if -pattern mail_addr1,mailing_country "^$" -copycolumns res_address mail_addr1  -endif\
 	  -if -pattern mailing_city,mailing_country "^$" -copycolumns res_city mailing_city  -endif \
 	  -if -pattern mailing_state,mailing_country "^$" -copycolumns res_state mailing_state  -endif\
 	  -if -pattern mailing_zip,mailing_country "^$" -copycolumns res_zip_code mailing_zip  -endif\
+	  -if -pattern  res_address  "(?i) (APT |UNIT |HALL|APTS |LOT |RM |BLDG|#|STE |TRLR|FRONT|BACK|BSMT)" -change is_apartment "^.*" true -endif \
 	  -p ${working_dir}/voters_base.csv >     "${target_voters}"
 
     echo "making addresses"
@@ -217,7 +221,11 @@ do_joins() {
     seesv -copy res_address ${ADDRESS_KEY} -change ${ADDRESS_KEY} " APT .*" "" -change ${ADDRESS_KEY} " UNIT .*" "" -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
-    seesv    -join "address,city" "latitude,longitude" "${geocode}" "${ADDRESS_KEY},res_city" "NaN"   -p working.csv > tmp.csv
+
+#join the lat/lon then combine the columns to make a location
+    seesv    -join "address,city" "latitude,longitude" "${geocode}" "${ADDRESS_KEY},res_city" "NaN"   \
+	     -concat "latitude,longitude" ";" Location -notcolumns latitude,longitude \
+	     -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
 
@@ -244,6 +252,8 @@ do_final() {
 	    -columnsbefore city  street_name,neighborhood \
 	    -concat street_name,street_type " " "full street name" \
 	    -columnsafter street_name full_street_name \
+	    -columnsafter address is_apartment \
+	    -columnsafter city location  \
 	    -columnsafter precinct precinct_turnout_2020 \
 	    -even address -set even 0 "Address even" \
 	    -notpattern address "1731 HAWTHORN AVE" \
@@ -253,7 +263,7 @@ do_final() {
 do_db() {
     echo "making db"
     seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv" > boulder_county_voters_db.xml
-    release_plugin boulder_county_voters_db.xml
+#    release_plugin boulder_county_voters_db.xml
 }
 
 
