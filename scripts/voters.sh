@@ -107,22 +107,30 @@ do_merge_geocode() {
 
 
 do_precincts() {
-    seesv -join precinct_name active_voters ${datadir}/precincts_voters.csv precinct 0   \
-	   -join precinct city ${datadir}/precincts_city.csv precinct ""   \
-	   -columnsafter  neighborhood city \
-	   -columnsafter  city active_voters \
-	   -concat "latitude,longitude" ";" Location -notcolumns latitude,longitude \
-	   -p ${precincts}> precincts_final.csv
-    seesv -db "precinct.type string neighborhood.type enumeration city.type enumeration location.type latlon \
+    echo "making precincts"
+    #extract the city
+    echo "extracting cities"
+    seesv -delimiter "|" -unique precinct "" -columns "precinct,res_city" -set 1 0 City -case city camel \
+	  -p "${registered_voters_file}" > ${tmpdir}/precincts_city.csv
+    
+    echo "extracting from map"
+    seesv -geojson true  -p "${precinctsmap}" > ${tmpdir}/precincts_geo.csv
+    echo "joining"
+    seesv -join precinct city ${tmpdir}/precincts_city.csv precinct "NA" \
+	  -combine "latitude,longitude" ";" Location \
+	  -columns precinct,city,location,polygon \
+	  -p "${tmpdir}/precincts_geo.csv"    > precincts_final.csv
+    seesv -db "table.id precincts table.label {Precincts}  \
     table.icon /icons/map/marker-blue.png \
     table.defaultView map \
-    table.mapLabelTemplate _quote_\${precinct} - \${neighborhood}_quote_ \
-    table.id precincts table.label {Precincts}  \
+    table.mapLabelTemplate _quote_\${precinct} - \${city}_quote_ \
     table.cansearch false \
+    table.mapDotLimit 300 \
+    precinct.type string city.type enumeration location.type latlon \
     polygon.canlist false location.canlist false \
     polygon.type clob     polygon.size 200000 \
-    precinct.cansearch true active_voters.cansearch true  neighborhood.cansearch true  city.cansearch true  location.cansearch true \
-" precincts_final.csv > precinctsdb.xml
+    precinct.cansearch true active_voters.cansearch true  city.cansearch true  location.cansearch true" \
+	  precincts_final.csv > precinctsdb.xml
 }
 
 

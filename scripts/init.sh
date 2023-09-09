@@ -49,6 +49,7 @@ function get_history_file()
 
 
 
+precinctsmap=${datadir}/boulder_precincts_2022.geojson
 precincts=${datadir}/boco_precincts.csv
 geocodio=${datadir}/voters_addresses_geocodio.csv.zip
 geocode=${datadir}/geocode.csv
