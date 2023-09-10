@@ -121,11 +121,13 @@ do_precincts() {
 	  -columns precinct,city,location,polygon \
 	  -p "${tmpdir}/precincts_geo.csv"    > precincts_final.csv
     seesv -db "table.id precincts table.label {Precincts}  \
+    table.defaultOrder city,asc \
     table.icon /icons/map/marker-blue.png \
     table.defaultView map \
     table.mapLabelTemplate _quote_\${precinct} - \${city}_quote_ \
     table.cansearch false \
-    table.mapDotLimit 300 \
+    table.mapMarkersShow false     table.mapPolygonsShow true
+    table.mapDotLimit 1000 \
     precinct.type string city.type enumeration location.type latlon \
     polygon.canlist false location.canlist false \
     polygon.type clob     polygon.size 200000 \
@@ -269,7 +271,7 @@ do_final() {
 }
 
 do_db() {
-    echo "making db"
+    echo "making db with voters_${target}.csv"
     seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv" > boulder_county_voters_db.xml
 #    release_plugin boulder_county_voters_db.xml
 }
