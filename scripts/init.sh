@@ -35,12 +35,14 @@ function get_working_file() {
 
 
 function get_count_file() {
-    local  myresult=$(get_working_file "count_${1}.csv")
+#    local  myresult=$(get_working_file "count_${1}.csv")
+    local  myresult=$(get_tmp_file "count_${1}.csv")
     echo "$myresult"
 }
 
 function get_history_file() {
-    local  myresult=$(get_working_file "history_${1}.csv")
+#    local  myresult=$(get_working_file "history_${1}.csv")
+    local  myresult=$(get_tmp_file "history_${1}.csv")
     echo "$myresult"
 }
 

@@ -6,17 +6,6 @@ export ADDRESS_KEY=address_key
 
 
 
-init_voting_history() {
-    if [ ! -f "${voter_history}" ]
-    then
-	echo "making voter history: ${voter_history}. unzipping the ${datadir}/EX-002... files"
-	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part1.txt.zip  >${voter_history}
-	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part2.txt.zip | tail -n+2 >> ${voter_history}
-	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part3.txt.zip | tail -n+2 >> ${voter_history}
-	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part4.txt.zip | tail -n+2 >> ${voter_history}	
-	echo "done making voter history"
-    fi
-}
 
 
 do_voting_report() {
@@ -45,7 +34,6 @@ do_voting_report() {
 
 
 do_prep() {
-    init_voting_history
     fetch_registered_voters
     if [ "$target" != "all" ]; then
 	echo "processing registered voters: ${registered_voters_file}  splits: ${splits} "
@@ -55,9 +43,6 @@ do_prep() {
 	echo "processing registered voters: ${registered_voters_file}  splits: ALL "
 	seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"   -p ${registered_voters_file} > ${working_dir}/voters_base.csv
     fi
-
-
-
 
 
     echo "making ${target_voters}"
@@ -138,10 +123,31 @@ do_precincts() {
 
 
 
+init_voting_history() {
+    if [ ! -f "${voter_history}" ]
+    then
+	echo "making voter history: ${voter_history}. unzipping the ${datadir}/EX-002... files"
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part1.txt.zip  >${voter_history}
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part2.txt.zip | tail -n+2 >> ${voter_history}
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part3.txt.zip | tail -n+2 >> ${voter_history}
+	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part4.txt.zip | tail -n+2 >> ${voter_history}	
+	echo "done making voter history"
+    fi
+}
+
+
 do_history() {
-   echo "making unique voting history from history: ${voter_history} target voters: ${target_voters}"
-   seesv -ifin voter_id "${target_voters}"  voter_id -p ${voter_history}  > tmp.csv
-   seesv -unique  "voter_id,election_date" "" -p tmp.csv > ${unique_voter_history}
+    init_voting_history
+    
+#   seesv -ifin voter_id "${target_voters}"  voter_id -p ${voter_history}  > tmp.csv
+#   seesv -unique  "voter_id,election_date" "" -p tmp.csv > ${unique_voter_history}
+   if [  -f "${unique_voter_history}" ]
+   then
+       echo "voter history already made"
+       return
+   fi
+   echo "making unique voting history from history: ${voter_history}"
+   seesv  -unique  "voter_id,election_date" "" -p ${voter_history}  > ${unique_voter_history}   
 
    for year in "${years[@]}"; do
        echo "\tmaking history ${year}"         
@@ -159,6 +165,13 @@ do_history() {
 
 
 do_counts() {
+   if [  -f "$(get_count_file primary)" ]
+   then
+       echo "voter counts already made"
+       return
+   fi
+
+
     echo "making voter counts"
     cols=VOTER_ID,count
     
@@ -192,7 +205,6 @@ do_demographics() {
 do_joins() {
     echo "doing joins"
     cp "${target_voters}" working.csv
-
 
     echo "\tjoining 2020 turnout"
     seesv -join precinct_name precinct_turnout_2020 ${datadir}/precincts_turnout_2020.csv precinct 0 -p working.csv > tmp.csv
@@ -269,6 +281,8 @@ do_final() {
 	    -even address -set even 0 "Address even" \
 	    -ifnotin address "file:${BOCO}/voters/excludedaddresses.txt"  address \
 	    -p  ${working_dir}/voters_joined.csv > voters_${target}.csv
+    jar -cvf voters_${target}.csv.zip voters_${target}.csv
+    rm voters_${target}.csv
 }
 
 do_db() {
@@ -279,7 +293,7 @@ do_db() {
 
 
 do_release() {
-    stage_ramadda  "voters_${target}.csv"
+    stage_ramadda  "voters_${target}.csv.zip"
 }
 
 
