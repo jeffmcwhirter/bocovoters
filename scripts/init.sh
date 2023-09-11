@@ -12,6 +12,8 @@ export splitsdir=${BOCO}/splits
 export staging=~/staging
 export dots=5000
 
+export  targets=("city_of_boulder" "city_of_lafayette" "city_of_longmont" "city_of_longmont_ward_1" "city_of_longmont_ward_2" "city_of_longmont_ward_3" "city_of_louisville" "city_of_louisville_ward_1" "city_of_louisville_ward_2" "city_of_louisville_ward_3" "town_of_erie" "town_of_jamestown" "town_of_lyons" "town_of_nederland" "town_of_superior" "town_of_ward")
+
 mkdir -p ${tmpdir}
 mkdir -p ${staging}
 
@@ -21,32 +23,26 @@ function get_working_dir() {
     echo "$fileresult"
 }
 
-function get_tmp_file()
-{
+function get_tmp_file() {
     local  working=tmp/${1}
     echo "$working"
 }
 
-function get_working_file()
-{
+function get_working_file() {
     local  working=$(get_working_dir)/${1}
     echo "$working"
 }
 
 
-function get_count_file()
-{
+function get_count_file() {
     local  myresult=$(get_working_file "count_${1}.csv")
     echo "$myresult"
 }
 
-function get_history_file()
-{
+function get_history_file() {
     local  myresult=$(get_working_file "history_${1}.csv")
     echo "$myresult"
 }
-
-
 
 
 precinctsmap=${datadir}/boulder_precincts_2022.geojson
@@ -58,7 +54,6 @@ export current_year=2023
 years_set="2022,2021,2020,2019,2018"
 # Split the string_set into an array using comma as the delimiter
 IFS=',' read -ra years <<< "$years_set"
-
 
 
 
@@ -79,14 +74,11 @@ export splits=${splits_2022}
 
 
 
-
-
 #voter history comes from the below URL. Unzip the file and zip up each
 #EX-002_Public_Voting_History_List_Part[1-4].txt  file and put them in the bocovoters/data directory
 #https://bouldercounty.gov/elections/maps-and-data/data-access/#Master-Voter-History-Data-File
 voter_history=$(get_tmp_file "voter_history.csv")
 unique_voter_history=$(get_tmp_file "voter_history_unique.csv")
-
 
 
 process_voter_args() {
@@ -97,18 +89,43 @@ process_voter_args() {
         -target)
 	    shift
 	    target=$1
-            export splits="${splitsdir}/${target}.csv"
+	    init_globals
 	    shift
 	    if [ "$target" != "all" ]; then
 		echo "using splits file: ${splits}"
 		if [ ! -f "${splits}" ]
 		then
+		    s=""
+		    for string in "${targets[@]}"; do
+			s="$s $string"
+		    done
 		    echo "Error: unknown splits file:${splits}"
-		    echo "Can be one of: city_of_boulder city_of_lafayette city_of_longmont city_of_longmont_ward_1 city_of_longmont_ward_2 city_of_longmont_ward_3 city_of_louisville city_of_louisville_ward_1 city_of_louisville_ward_2 city_of_louisville_ward_3 town_of_erie town_of_jamestown town_of_lyons town_of_nederland town_of_superior town_of_ward"
+		    echo "Can be one of: ${s}"
 		    exit
 		fi
 	    fi
             ;;
+	-clean)
+	    echo 'cleaning'
+	    rm -r -f missing_addresses*
+	    rm -r -f voters_*.csv
+	    rm -r -f precincts*
+	    rm -r -f boulder_county_voters_db.xml
+	    rm -r -f tmp/*
+	    if [ ! -d "junk" ]
+	    then
+	       mkdir  junk
+	    fi
+	    rm -r -f  junk/*
+	    for t in "${targets[@]}"; do
+		if [  -d "${t}" ]
+		then
+		    mv -f  "${t}" junk/
+		fi
+	    done
+	    echo 'done cleaning'
+	    shift
+	    ;;
 	-prep)
 	    do_prep
 	    shift
@@ -132,9 +149,18 @@ process_voter_args() {
 	    $1
 	    exit
 	    ;;
+	-all)
+	    for name in "${targets[@]}"; do
+		echo "Processing ${name}"
+		target="${name}"
+		init_globals
+		do_all
+	    done
+	    exit
+	    ;;
 	*)
 	    echo "Unknown argument:$arg"
-	    echo "usage: \n\t-target <target> \n\t-prep\n\t-mergegeo <new file>\n\t-fetchreport\n\t-quit"
+	    echo "usage: \n\t-target <target> \n\t-prep\n\t-mergegeo <new file>\n\t-fetchreport\n\t-all\n\t-quit"
 	    exit 1
 	    ;;
 	esac
@@ -145,6 +171,7 @@ process_voter_args() {
 }
 
 init_globals() {
+    export splits="${splitsdir}/${target}.csv"
     export target_voters=$(get_working_file target_voters.csv)
     export working_dir=$(get_working_dir)
 }

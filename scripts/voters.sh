@@ -9,11 +9,12 @@ export ADDRESS_KEY=address_key
 init_voting_history() {
     if [ ! -f "${voter_history}" ]
     then
-	echo "making voter history: ${voter_history}"
+	echo "making voter history: ${voter_history}. unzipping the ${datadir}/EX-002... files"
 	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part1.txt.zip  >${voter_history}
 	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part2.txt.zip | tail -n+2 >> ${voter_history}
 	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part3.txt.zip | tail -n+2 >> ${voter_history}
 	unzip -p ${datadir}/EX-002_Public_Voting_History_List_Part4.txt.zip | tail -n+2 >> ${voter_history}	
+	echo "done making voter history"
     fi
 }
 
@@ -258,7 +259,7 @@ do_final() {
 	    -columnsafter birth_year birth_year_range \
 	    -set res_address 0 address -set res_city 0 city -set res_state 0 state \
 	    -set res_zip_code 0 zip_code -set res_zip_plus 0 zip_plus \
-	    -columnsbefore first_name  name,party,status,status_reason,gender,address,city,state,zip_code \
+	    -columnsbefore middle_name  name,first_name,party,status,status_reason,gender,address,city,state,zip_code \
 	    -columnsbefore city  street_name,neighborhood \
 	    -concat street_name,street_type " " "full street name" \
 	    -columnsafter street_name full_street_name \
