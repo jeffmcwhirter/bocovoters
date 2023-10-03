@@ -206,9 +206,9 @@ do_joins() {
     echo "doing joins"
     cp "${target_voters}" working.csv
 
-    echo "\tjoining 2020 turnout"
-    seesv -join precinct_name precinct_turnout_2020 ${datadir}/precincts_turnout_2020.csv precinct 0 -p working.csv > tmp.csv
-    mv tmp.csv working.csv
+#    echo "\tjoining 2020 turnout"
+#    seesv -join precinct_name precinct_turnout_2020 ${datadir}/precincts_turnout_2020.csv precinct 0 -p working.csv > tmp.csv
+#    mv tmp.csv working.csv
 
     echo "\tjoining voted in"
     seesv -join 0 "voted_in_${current_year}" "${working_dir}/voted_in_${current_year}.csv" voter_id false        -p working.csv > tmp.csv
@@ -264,7 +264,7 @@ do_joins() {
 do_final() {
     echo "making final"
     seesv  \
-	    -notcolumns county,preference,uocava,uocava_type,issue_method,split \
+	    -notcolumns county,uocava,uocava_type,issue_method,split \
 	    -set county_regn_date 0 registration_date  \
 	    -set vr_phone 0 phone -set voter_name 0 name  -set yob 0 birth_year \
 	    -ranges birth_year "Birth year range" 1930 10 \
@@ -277,18 +277,22 @@ do_final() {
 	    -columnsafter street_name full_street_name \
 	    -columnsafter address is_apartment \
 	    -columnsafter city location  \
-	    -columnsafter precinct precinct_turnout_2020 \
 	    -even address -set even 0 "Address even" \
 	    -ifnotin address "file:${BOCO}/voters/excludedaddresses.txt"  address \
 	    -p  ${working_dir}/voters_joined.csv > voters_${target}.csv
+#	    -columnsafter precinct precinct_turnout_2020 \
+
+
     jar -cvf voters_${target}.csv.zip voters_${target}.csv
     rm voters_${target}.csv
 }
 
 do_db() {
+
     echo "making db with voters_${target}.csv"
-    seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv" > boulder_county_voters_db.xml
-#    release_plugin boulder_county_voters_db.xml
+    seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv.zip" > boulder_county_voters_db.xml
+    cp boulder_county_voters_db.xml ~/.ramadda/plugins
+    release_plugin boulder_county_voters_db.xml
 }
 
 

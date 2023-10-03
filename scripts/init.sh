@@ -144,7 +144,14 @@ process_voter_args() {
 	-fetchreport)
 	    fetch_voting_report
 	    shift
+	    exit
 	    ;;
+	-db)
+	    do_db
+#	    release_plugin boulder_county_voters_db.xml
+	    exit
+	    shift
+	    ;;	
 	-call)
 	    shift
 	    init_globals
@@ -162,7 +169,7 @@ process_voter_args() {
 	    ;;
 	*)
 	    echo "Unknown argument:$arg"
-	    echo "usage: \n\t-target <target> \n\t-prep\n\t-mergegeo <new file>\n\t-fetchreport\n\t-all\n\t-quit"
+	    echo "usage: \n\t-target <target> \n\t-prep\n\t-mergegeo <new file>\n\t-\n\t-fetchreport\n\t-all\n\t-quit"
 	    exit 1
 	    ;;
 	esac
