@@ -86,7 +86,7 @@ $("#formjs_generate").button().click(()=>{
         line = line.trim();
 	if(line=="") return;
 	let name = precincts[line];
-	let title = 'Precinct: ' + name?name+ ' - ':'';
+	let title = 'Precinct: ' + (name?name+ ' - ':'');
 	let file='precinct_'+line;
 	if(name) file+='_'+Utils.makeId(name);
 	file+='.pdf';
