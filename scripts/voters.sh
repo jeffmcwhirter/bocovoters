@@ -292,7 +292,7 @@ do_db() {
     echo "making db with voters_${target}.csv"
     seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv.zip" > boulder_county_voters_db.xml
     cp boulder_county_voters_db.xml ~/.ramadda/plugins
-    release_plugin boulder_county_voters_db.xml
+#    release_plugin boulder_county_voters_db.xml
 }
 
 
