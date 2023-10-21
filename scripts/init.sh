@@ -12,7 +12,7 @@ export splitsdir=${BOCO}/splits
 export staging=~/staging
 export dots=5000
 
-export  targets=("city_of_boulder" "city_of_lafayette" "city_of_longmont" "city_of_longmont_ward_1" "city_of_longmont_ward_2" "city_of_longmont_ward_3" "city_of_louisville" "city_of_louisville_ward_1" "city_of_louisville_ward_2" "city_of_louisville_ward_3" "town_of_erie" "town_of_jamestown" "town_of_lyons" "town_of_nederland" "town_of_superior" "town_of_ward")
+export  targets=("boulder_county" "city_of_boulder" "city_of_lafayette" "city_of_longmont" "city_of_longmont_ward_1" "city_of_longmont_ward_2" "city_of_longmont_ward_3" "city_of_louisville" "city_of_louisville_ward_1" "city_of_louisville_ward_2" "city_of_louisville_ward_3" "town_of_erie" "town_of_jamestown" "town_of_lyons" "town_of_nederland" "town_of_superior" "town_of_ward")
 
 mkdir -p ${tmpdir}
 mkdir -p ${staging}
