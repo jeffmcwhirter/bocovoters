@@ -11,9 +11,9 @@ export ADDRESS_KEY=address_key
 do_voting_report() {
 
     ##For now just create empty files since there isn't any voter reports
-    echo "VOTER_ID,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE,voted_in_2023" >${working_dir}/voted_in_${current_year}.csv
-    cp ${working_dir}/voted_in_${current_year}.csv     ${working_dir}/all_voted_in_${current_year}.csv    
-    return
+#    echo "VOTER_ID,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE,voted_in_2023" >${working_dir}/voted_in_${current_year}.csv
+#    cp ${working_dir}/voted_in_${current_year}.csv     ${working_dir}/all_voted_in_${current_year}.csv    
+#    return
 
     echo "processing voting report ${voting_report}"
     seesv  -delimiter "|"  -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
@@ -306,6 +306,7 @@ do_all() {
     do_prep
     do_history
     do_counts
+    fetch_voting_report
     do_voting_report
     do_joins
     do_final
