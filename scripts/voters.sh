@@ -267,6 +267,7 @@ do_final() {
 	    -notcolumns county,uocava,uocava_type,issue_method,split \
 	    -set county_regn_date 0 registration_date  \
 	    -set vr_phone 0 phone -set voter_name 0 name  -set yob 0 birth_year \
+	    -formatphone phone  \
 	    -ranges birth_year "Birth year range" 1930 10 \
 	    -columnsafter birth_year birth_year_range \
 	    -set res_address 0 address -set res_city 0 city -set res_state 0 state \

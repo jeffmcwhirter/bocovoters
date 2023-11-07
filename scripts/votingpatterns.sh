@@ -88,14 +88,14 @@ do_histogram() {
 
 
 do_turnout() {
-    seesv -append  1 ${file_prefix_age}_2016.csv ${file_prefix_age}_2017.csv ${file_prefix_age}_2018.csv ${file_prefix_age}_2019.csv ${file_prefix_age}_2020.csv ${file_prefix_age}_2021.csv ${file_prefix_age}_2022.csv > tmp.csv
+    seesv -append  1 ${file_prefix_age}_2016.csv ${file_prefix_age}_2017.csv ${file_prefix_age}_2018.csv ${file_prefix_age}_2019.csv ${file_prefix_age}_2020.csv ${file_prefix_age}_2021.csv ${file_prefix_age}_2022.csv ${file_prefix_age}_2023.csv > tmp.csv
 
     seesv -makefields age_range turnout year "" \
-	   -addheader "default.unit %  year.type string year.unit {} year.format yyyy" -p tmp.csv >boulder_age_turnout.csv
+	   -addheader "default.unit %  year.type int year.unit {} year.format yyyy" -p tmp.csv >boulder_age_turnout.csv
     seesv -makefields age_range registered_voters year "" \
-	   -addheader "year.type string  year.format yyyy" -p tmp.csv >boulder_age_registered_voters.csv    
+	   -addheader "year.type int  year.format yyyy" -p tmp.csv >boulder_age_registered_voters.csv    
     seesv -makefields age_range number_voted year "" \
-	   -addheader "year.type string year.format yyyy" -p tmp.csv >boulder_age_voted.csv
+	   -addheader "year.type int year.format yyyy" -p tmp.csv >boulder_age_voted.csv
     stage_local boulder_age_*.csv
 
 }    
@@ -136,6 +136,7 @@ do_cat_all() {
 	  -join ${join_column}  "${columns}"  ${file}_2020.csv   ${join_column} $default_value \
 	  -join ${join_column}  "${columns}"  ${file}_2021.csv   ${join_column} $default_value \
 	  -join ${join_column}  "${columns}"  ${file}_2022.csv   ${join_column} $default_value \
+	  -join ${join_column}  "${columns}"  ${file}_2023.csv   ${join_column} $default_value \
 	  -p ${file}_2016.csv  > tmp.csv
 }
 
@@ -152,6 +153,7 @@ do_all() {
 	  -set 14 0 "2020 Registered Voters"   -set 15 0 "2020 Number Voted" -set 16 0 "2020 Turnout" \
 	  -set 17 0 "2021 Registered Voters"   -set 18 0 "2021 Number Voted" -set 19 0 "2021 Turnout" \
 	  -set 20 0 "2022 Registered Voters"   -set 21 0 "2022 Number Voted" -set 22 0 "2022 Turnout" \
+	  -set 20 0 "2023 Registered Voters"   -set 21 0 "2023 Number Voted" -set 22 0 "2023 Turnout" \
 	  -columns "1,2-20:3,3-21:3,4-22:3" \
 	  -set 0 0 "${label}" \
 	  -addheader "(\\\d\\\d\\\d\\\d).*.label \$1 ${col}.type string .*number_voted.group {Number Voted} .*turnout.group Turnout .*registered_voters.group {Registered Voters} " \
@@ -185,6 +187,7 @@ do_histogram 2019 19
 do_histogram 2020 20
 do_histogram 2021 21
 do_histogram 2022 22
+do_histogram 2023 23
 do_turnout
 do_diff 2019 2021
 do_diff 2017 2021
