@@ -6,8 +6,6 @@ export ADDRESS_KEY=address_key
 
 
 
-
-
 do_voting_report() {
 
     ##For now just create empty files since there isn't any voter reports
@@ -16,9 +14,10 @@ do_voting_report() {
 #    return
 
     echo "processing voting report ${voting_report}"
-    seesv  -delimiter "|"  -columns voter_id,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
+    seesv  -delimiter "|"  -columns voter_id,precinct,MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE \
 	   -concat "MAIL_BALLOT_RECEIVE_DATE,IN_PERSON_VOTE_DATE" "" voted_in_${current_year} \
 	   -trim voted_in_${current_year} \
+	   -copy voted_in_${current_year} voted_date \
 	   -change voted_in_${current_year} "^$" false \
 	   -change voted_in_${current_year} ".*[0-9]+.*" true \
 	   -p ${voting_report}  > ${working_dir}/voted_in_${current_year}.csv
@@ -29,7 +28,24 @@ do_voting_report() {
 	    -change voted_in_${current_year} "^$" false \
 	    -change voted_in_${current_year} ".*[0-9]+.*" true \
 	    -p ${voting_report}  > ${working_dir}/all_voted_in_${current_year}.csv
+
+
+    seesv -delimiter "|" -summary precinct "" "" count -set 1 0 "Total voters" \
+	  -p "${registered_voters_file}"  > precinct_counts.csv
+
+    seesv -find voted_in_${current_year} true -summary precinct "" "" count \
+	  -set 1 0 "Voted in ${current_year}" \
+	  -join precinct total_voters precinct_counts.csv precinct NaN \
+	  -operator "voted_in_2023,total_voters" turnout "/" \
+	  -decimals turnout 2 \
+	  -sortby turnout down numeric \
+	  -p ${working_dir}/voted_in_${current_year}.csv   > precinct_turnout.csv
+
+
 }
+
+
+
 
 
 
@@ -37,8 +53,10 @@ do_prep() {
     fetch_registered_voters
     if [ "$target" != "all" ]; then
 	echo "processing registered voters: ${registered_voters_file}  splits: ${splits} "
-	seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  -concat precinct,split "." precinct_split  \
-	       -ifin  split ${splits} precinct_split -notcolumns precinct_split -p ${registered_voters_file} > ${working_dir}/voters_base.csv
+	seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"  \
+	       -concat precinct,split "." precinct_split  \
+	       -ifin  split ${splits} precinct_split -notcolumns precinct_split \
+	       -p ${registered_voters_file} > $(get_working_file voters_base.csv)
     else
 	echo "processing registered voters: ${registered_voters_file}  splits: ALL "
 	seesv  -delimiter "|"  -notcolumns "regex:(?i)BALLOT_.*"   -p ${registered_voters_file} > ${working_dir}/voters_base.csv
@@ -89,6 +107,7 @@ do_merge_geocode() {
     cp mergedgeo.csv  ${geocode}
     echo "the main geocode file has been updated: ${geocode}"
 }
+
 
 
 
@@ -173,7 +192,7 @@ do_counts() {
 
 
     echo "making voter counts"
-    cols=VOTER_ID,count
+    cols="VOTER_ID,count"
     
     for year in "${years[@]}"; do
 	seesv -countunique voter_id -columns ${cols} -set 1 0 "Voted in $year" -change "voted_in_$year" 1 true \
@@ -211,7 +230,7 @@ do_joins() {
 #    mv tmp.csv working.csv
 
     echo "\tjoining voted in"
-    seesv -join 0 "voted_in_${current_year}" "${working_dir}/voted_in_${current_year}.csv" voter_id false        -p working.csv > tmp.csv
+    seesv -join 0 "voted_in_${current_year},voted_date" "${working_dir}/voted_in_${current_year}.csv" voter_id "false,"        -p working.csv > tmp.csv
     mv tmp.csv working.csv
 
     echo "\tjoining voting history"
@@ -289,11 +308,10 @@ do_final() {
 }
 
 do_db() {
-
     echo "making db with voters_${target}.csv"
     seesv -db "file:${BOCO}/voters/db.properties" "voters_${target}.csv.zip" > boulder_county_voters_db.xml
     cp boulder_county_voters_db.xml ~/.ramadda/plugins
-#    release_plugin boulder_county_voters_db.xml
+    release_plugin boulder_county_voters_db.xml
 }
 
 
@@ -311,10 +329,20 @@ do_all() {
     do_voting_report
     do_joins
     do_final
-#    do_db
+    do_db
     do_release
 }
 
 
+
 process_voter_args "$@"
+
+#do_voting_report
+#do_precinct_stats
+#exit
+#do_voting_report
+#exit
+
 do_all
+
+
