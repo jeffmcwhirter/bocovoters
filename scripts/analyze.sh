@@ -13,6 +13,11 @@ export all_prefix="registered_voters_by"
 
 export url="${host}/entry/show?entryid=${dbentry}&db.search=Search&db.view=csv&max=500000&groupsortdir=asc"
 
+if [ ! -d "processed" ]
+then
+   mkdir processed
+fi
+
 seesv() {
     ${csv}  -cleaninput  "$@"
 }
@@ -87,16 +92,19 @@ echo "making turnout"
 seesv -join birth_year_range voters voted_age_${year}.csv birth_year_range NaN \
       -operator "voters,registered_voters" "turnout" "/" \
       -decimals turnout 2 \
+      -notpattern turnout "0.0" \
       -p ${all_prefix}_age_${year}.csv > turnout_age_${year}.csv
 
 seesv -join precinct voters voted_precinct_${year}.csv precinct NaN \
       -operator "voters,registered_voters" "turnout" "/" \
       -decimals turnout 2 \
+      -notpattern turnout "0.0" \
       -p ${all_prefix}_precinct_${year}.csv > turnout_precinct_${year}.csv
 
 seesv -join "precinct,birth_year_range" voters voted_precinct_age_${year}.csv "precinct,birth_year_range" NaN \
       -operator "voters,registered_voters" "turnout" "/" \
       -decimals turnout 2 \
+      -notpattern turnout "0.0" \
       -p ${all_prefix}_precinct_age_${year}.csv > turnout_precinct_age_${year}.csv
 
 echo "adding headers"
