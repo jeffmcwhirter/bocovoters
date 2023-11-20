@@ -56,8 +56,22 @@ function add_header() {
 
 
 fetch ${all_prefix}_age_${year}.csv "${url}&group_by=birth_year_range&agglabel0=registered_voters" true
+seesv -insert "" total 74582 -operator registered_voters,total percent "/" -notcolumns total \
+      -decimals percent 2 \
+      -p ${all_prefix}_age_${year}.csv > foo.csv
+mv foo.csv  ${all_prefix}_age_${year}.csv 
+
 fetch ${all_prefix}_precinct_${year}.csv "${url}&group_by=precinct&agglabel0=registered_voters"
+seesv -sortby registered_voters down numeric -p ${all_prefix}_precinct_${year}.csv >foo.csv
+mv foo.csv ${all_prefix}_precinct_${year}.csv
+
 fetch ${all_prefix}_precinct_age_${year}.csv "${url}&group_by=precinct&group_by=birth_year_range&agglabel0=registered_voters" true
+
+
+##get rid of these since we change them in place and the script can't be reentrant
+rm -f voted_precinct_age_date_${year}.csv voted_age_date_${year}.csv  
+
+
 
 
 fetch voted_precinct_${year}.csv "${url}&${datearg}=${fromdate}&group_by=precinct&agglabel0=voters"
