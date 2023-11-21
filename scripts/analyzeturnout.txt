@@ -1,0 +1,3 @@
+-operator "voters,registered_voters" "turnout" "/" 
+-decimals turnout 2 
+-notpattern turnout "0.0" 
