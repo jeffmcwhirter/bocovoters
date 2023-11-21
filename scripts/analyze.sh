@@ -2,16 +2,21 @@
 mydir=`dirname $0`
 #source ${BOCO}/scripts/init.sh
 
-export csv=~/bin/csv.sh 
+csv=~/bin/csv.sh 
 
-export year=2023
-export fromdate="${year}-09-01"
-export dbentry=666a1696-3c1b-4908-ac66-4a848a6d2dea
-export host="https://boulderdata.org/repository"
-export datearg="search.db_boulder_county_voters.voted_date_fromdate"
-export all_prefix="registered_voters_by"
+#change this if you use a different database
+total_voters=74582
+dbentry=666a1696-3c1b-4908-ac66-4a848a6d2dea
 
-export url="${host}/entry/show?entryid=${dbentry}&db.search=Search&db.view=csv&max=500000&groupsortdir=asc"
+
+year=2023
+
+fromdate="${year}-09-01"
+host="https://boulderdata.org/repository"
+datearg="search.db_boulder_county_voters.voted_date_fromdate"
+all_prefix="registered_voters_by"
+
+url="${host}/entry/show?entryid=${dbentry}&db.search=Search&db.view=csv&max=500000&groupsortdir=asc"
 
 if [ ! -d "processed" ]
 then
@@ -56,13 +61,17 @@ function add_header() {
 
 
 fetch ${all_prefix}_age_${year}.csv "${url}&group_by=birth_year_range&agglabel0=registered_voters" true
-seesv -insert "" total 74582 -operator registered_voters,total percent "/" -notcolumns total \
+##add the %
+seesv -insert "" total ${total_voters} \
+      -operator registered_voters,total percent "/" -notcolumns total \
       -decimals percent 2 \
       -p ${all_prefix}_age_${year}.csv > foo.csv
 mv foo.csv  ${all_prefix}_age_${year}.csv 
 
 fetch ${all_prefix}_precinct_${year}.csv "${url}&group_by=precinct&agglabel0=registered_voters"
-seesv -sortby registered_voters down numeric -p ${all_prefix}_precinct_${year}.csv >foo.csv
+seesv -gt registered_voters 10\
+      -sortby registered_voters down numeric\
+      -p ${all_prefix}_precinct_${year}.csv >foo.csv
 mv foo.csv ${all_prefix}_precinct_${year}.csv
 
 fetch ${all_prefix}_precinct_age_${year}.csv "${url}&group_by=precinct&group_by=birth_year_range&agglabel0=registered_voters" true
