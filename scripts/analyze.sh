@@ -10,6 +10,7 @@ dbentry=666a1696-3c1b-4908-ac66-4a848a6d2dea
 
 
 year=2023
+voting_history="${BOCO}/data/ce-068-${year}.txt.zip"
 
 fromdate="${year}-09-01"
 host="https://boulderdata.org/repository"
@@ -23,10 +24,12 @@ then
    mkdir processed
 fi
 
+
+
+
 seesv() {
     ${csv}  -cleaninput  "$@"
 }
-
 
 
 function fetch() {
@@ -60,6 +63,7 @@ function add_header() {
 
 
 
+
 fetch ${all_prefix}_age_${year}.csv "${url}&group_by=birth_year_range&agglabel0=registered_voters" true
 ##add the %
 seesv -insert "" total ${total_voters} \
@@ -81,8 +85,6 @@ fetch ${all_prefix}_precinct_age_${year}.csv "${url}&group_by=precinct&group_by=
 rm -f voted_precinct_age_date_${year}.csv voted_age_date_${year}.csv  
 
 
-
-
 fetch voted_precinct_${year}.csv "${url}&${datearg}=${fromdate}&group_by=precinct&agglabel0=voters"
 
 fetch voted_precinct_age_${year}.csv "${url}&${datearg}=${fromdate}&group_by=precinct&group_by=birth_year_range&agglabel0=voters" true
@@ -93,7 +95,7 @@ fetch tmp1.csv "${url}&${datearg}=${fromdate}&group_by=voted_date&agglabel0=vote
 seesv -dateformat "yyyy-MM-dd" "" -formatdate voted_date  -sortby voted_date up date  -p tmp1.csv > voted_date_${year}.csv
 
 fetch tmp2.csv "${url}&${datearg}=${fromdate}&group_by=birth_year_range&group_by=voted_date&agglabel0=voters"
-seesv -dateformat "yyyy-MM-dd" "" -formatdate voted_date -sortby voted_date up date -p tmp2.csv > voted_age_date_${year}.csv 
+seesv -indateformat "yyyy-MM-dd" "" -formatdate voted_date -sortby voted_date up date -p tmp2.csv > voted_age_date_${year}.csv 
 change_age voted_age_date_${year}.csv
 
 fetch voted_precinct_age_date_${year}.csv "${url}&${datearg}=${fromdate}&group_by=precinct&group_by=birth_year_range&group_by=voted_date&agglabel0=voters" true true
@@ -102,14 +104,18 @@ echo "making fields"
 seesv -concat "precinct,voted_date" - unique \
       -makefields birth_year_range voters unique precinct,voted_date \
       -notcolumns unique -firstcolumns voted_date,precinct,1930_and_under \
+      -indateformat "yyyy-MM-dd" ""  -sortby voted_date up date \
       -p voted_precinct_age_date_${year}.csv > foo.csv
 mv foo.csv voted_precinct_age_date_${year}.csv
 
 
 seesv -concat "voted_date,birth_year_range" - unique \
       -makefields birth_year_range voters voted_date "" \
+      -indateformat "yyyy-MM-dd" ""  -sortby voted_date up date \
       -p voted_age_date_${year}.csv > foo.csv
 mv foo.csv voted_age_date_${year}.csv 
+
+
 
 echo "making turnout"
 seesv -join birth_year_range voters voted_age_${year}.csv birth_year_range NaN \

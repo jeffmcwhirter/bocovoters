@@ -14,6 +14,17 @@ mydir="${BOCO}/scripts"
 csv=~/bin/csv.sh 
 
 
+#for 2020
+precinctfield=precinct_name
+
+##for 2022
+precinctfield=precinct_name_long
+
+##for 2023
+precinctfield=precinct_number
+
+
+
 seesv() {
     ${csv}  "$@"
 }
@@ -27,7 +38,8 @@ fi
 process() {
     echo "processing $1"
     seesv  -change "active_voters,total_ballots,total_votes" "," "" \
-	   -change "active_voters,total_ballots,total_votes" "N/A" "NaN" \
+	   -change "active_voters,total_ballots,total_votes" "^N/A\$" "NaN" \
+	   -change "active_voters,total_ballots,total_votes" "ERROR:.*" "NaN" \
 	   -makefields choice_name "total_votes" precinct "active_voters,total_ballots" \
 	   -gt total_ballots 0 \
 	   -operator "total_ballots,active_voters" "turnout" "/" \
@@ -43,7 +55,7 @@ process() {
 
 
 echo "exploding file"
-seesv -headerids -set precinct_number 0 precinct -explode contest_title "$1"
+seesv -headerids -set ${precinctfield} 0 precinct -explode contest_title "$1"
 
 
 #process city_of_longmont_council_member_ward_3.csv
