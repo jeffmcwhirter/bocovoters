@@ -55,7 +55,9 @@ process() {
 
 
 echo "exploding file"
-seesv -headerids -set ${precinctfield} 0 precinct -explode contest_title "$1"
+#seesv -dots 1000 -headerids -set ${precinctfield} 0 precinct -p "$1"
+seesv -dots 10 -headerids -set ${precinctfield} 0 precinct -explode contest_title "" "$1"
+echo "done exploding file\n"
 
 
 #process city_of_longmont_council_member_ward_3.csv
