@@ -1,3 +1,11 @@
+##
+## Look up the ID from, e.g.
+# https://documents.bouldercolorado.gov/WebLink/Browse.aspx?id=31166&dbid=0&repo=LF8PROD2
+# and pass it to
+# tclsh download.tcl <ID>
+#
+
+
 set ::script_dir [file dirname [info script]]
 
 if {![file exists json]} {
